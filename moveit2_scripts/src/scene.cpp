@@ -49,36 +49,7 @@ int main(int argc, char **argv) {
   move_group_arm.setStartStateToCurrentState();
   move_group_gripper.setStartStateToCurrentState();
 
-  // Create collision object for the robot to avoid
-  auto const collision_object = [frame_id = move_group_arm.getPlanningFrame()] {
-    moveit_msgs::msg::CollisionObject collision_object;
-    collision_object.header.frame_id = frame_id;
-    collision_object.id = "box1";
-    shape_msgs::msg::SolidPrimitive primitive;
-
-    // Define the size of the box in meters
-    primitive.type = primitive.BOX;
-    primitive.dimensions.resize(3);
-    primitive.dimensions[primitive.BOX_X] = 2.64;
-    primitive.dimensions[primitive.BOX_Y] = 0.15;
-    primitive.dimensions[primitive.BOX_Z] = 2.5;
-
-    // Define the pose of the box (relative to the frame_id)
-    geometry_msgs::msg::Pose box_pose;
-    box_pose.orientation.w =
-        1.0; // We can leave out the x, y, and z components of the quaternion
-             // since they are initialized to 0
-    box_pose.position.x = 0.5;
-    box_pose.position.y = 0.55;
-    box_pose.position.z = 1.25;
-
-    collision_object.primitives.push_back(primitive);
-    collision_object.primitive_poses.push_back(box_pose);
-    collision_object.operation = collision_object.ADD;
-
-    return collision_object;
-  }();
-
+  
   // Table
   auto const collision_object_table = [frame_id =
                                            move_group_arm.getPlanningFrame()] {
@@ -90,18 +61,16 @@ int main(int argc, char **argv) {
     // Define the size of the box in meters
     primitive_1.type = primitive_1.BOX;
     primitive_1.dimensions.resize(3);
-    primitive_1.dimensions[primitive_1.BOX_X] = 1.8;
-    primitive_1.dimensions[primitive_1.BOX_Y] = 0.6;
-    primitive_1.dimensions[primitive_1.BOX_Z] = 0.02;
+    primitive_1.dimensions[primitive_1.BOX_X] = 0.85;
+    primitive_1.dimensions[primitive_1.BOX_Y] = 1.81;
+    primitive_1.dimensions[primitive_1.BOX_Z] = 0.05;
 
     // Define the pose of the box (relative to the frame_id)
     geometry_msgs::msg::Pose box_pose_1;
-    box_pose_1.orientation.w =
-        1.0; // We can leave out the x, y, and z components of the quaternion
-             // since they are initialized to 0
-    box_pose_1.position.x = 0.8;
-    box_pose_1.position.y = 0.2;
-    box_pose_1.position.z = -0.011;
+    box_pose_1.orientation.w = 1.0;
+    box_pose_1.position.x = 0.3;
+    box_pose_1.position.y = 0.36;
+    box_pose_1.position.z = -0.026; // add more than
 
     collision_object_1.primitives.push_back(primitive_1);
     collision_object_1.primitive_poses.push_back(box_pose_1);
@@ -110,29 +79,89 @@ int main(int argc, char **argv) {
     return collision_object_1;
   }();
 
-  // Create collision object for the robot to avoid
-  auto const collision_object_cube = [frame_id =
-                                          move_group_arm.getPlanningFrame()] {
+// Coffee machine base
+  auto const collision_object_coffee_machine_base = [frame_id = move_group_arm.getPlanningFrame()] {
     moveit_msgs::msg::CollisionObject collision_object;
     collision_object.header.frame_id = frame_id;
-    collision_object.id = "cube";
+    collision_object.id = "coffee base";
     shape_msgs::msg::SolidPrimitive primitive;
 
     // Define the size of the box in meters
     primitive.type = primitive.BOX;
     primitive.dimensions.resize(3);
-    primitive.dimensions[primitive.BOX_X] = 0.02;
-    primitive.dimensions[primitive.BOX_Y] = 0.02;
-    primitive.dimensions[primitive.BOX_Z] = 0.06;
+    primitive.dimensions[primitive.BOX_X] = 0.48;
+    primitive.dimensions[primitive.BOX_Y] = 0.23;
+    primitive.dimensions[primitive.BOX_Z] = 0.47;
+
+    // Define the pose of the box (relative to the frame_id)
+    geometry_msgs::msg::Pose box_pose;
+    box_pose.orientation.w = 1.0; 
+    box_pose.position.x = 0.34;
+    box_pose.position.y = 0.86;
+    box_pose.position.z = 0.24;
+
+    collision_object.primitives.push_back(primitive);
+    collision_object.primitive_poses.push_back(box_pose);
+    collision_object.operation = collision_object.ADD;
+
+    return collision_object;
+  }();
+
+
+  // Coffee machine head
+  auto const collision_object_coffee_machine_head = [frame_id =
+                                          move_group_arm.getPlanningFrame()] {
+    moveit_msgs::msg::CollisionObject collision_object;
+    collision_object.header.frame_id = frame_id;
+    collision_object.id = "coffee machine head";
+    shape_msgs::msg::SolidPrimitive primitive;
+
+    // Define the size of the box in meters
+    primitive.type = primitive.BOX;
+    primitive.dimensions.resize(3);
+    primitive.dimensions[primitive.BOX_X] = 0.1;
+    primitive.dimensions[primitive.BOX_Y] = 0.23;
+    primitive.dimensions[primitive.BOX_Z] = 0.14;
 
     // Define the pose of the box (relative to the frame_id)
     geometry_msgs::msg::Pose box_pose;
     box_pose.orientation.w =
         1.0; // We can leave out the x, y, and z components of the quaternion
              // since they are initialized to 0
-    box_pose.position.x = 0.34;
-    box_pose.position.y = 0.132;
-    box_pose.position.z = 0.03;
+    box_pose.position.x = 0.05;
+    box_pose.position.y = 0.86;
+    box_pose.position.z = 0.405;
+
+    collision_object.primitives.push_back(primitive);
+    collision_object.primitive_poses.push_back(box_pose);
+    collision_object.operation = collision_object.ADD;
+
+    return collision_object;
+  }();
+
+    // Coffee machine nozzle
+  auto const collision_object_coffee_machine_nozzle = [frame_id =
+                                          move_group_arm.getPlanningFrame()] {
+    moveit_msgs::msg::CollisionObject collision_object;
+    collision_object.header.frame_id = frame_id;
+    collision_object.id = "coffee machine nozzle";
+    shape_msgs::msg::SolidPrimitive primitive;
+
+    // Define the size of the box in meters
+    primitive.type = primitive.BOX;
+    primitive.dimensions.resize(3);
+    primitive.dimensions[primitive.BOX_X] = 0.1;
+    primitive.dimensions[primitive.BOX_Y] = 0.11;
+    primitive.dimensions[primitive.BOX_Z] = 0.07;
+
+    // Define the pose of the box (relative to the frame_id)
+    geometry_msgs::msg::Pose box_pose;
+    box_pose.orientation.w =
+        1.0; // We can leave out the x, y, and z components of the quaternion
+             // since they are initialized to 0
+    box_pose.position.x = 0.05;
+    box_pose.position.y = 0.86;
+    box_pose.position.z = 0.3;
 
     collision_object.primitives.push_back(primitive);
     collision_object.primitive_poses.push_back(box_pose);
@@ -145,10 +174,12 @@ int main(int argc, char **argv) {
   moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
   moveit::planning_interface::PlanningSceneInterface planning_scene_interface_2;
   moveit::planning_interface::PlanningSceneInterface planning_scene_interface_3;
+  moveit::planning_interface::PlanningSceneInterface planning_scene_interface_4;
 
-  planning_scene_interface.applyCollisionObject(collision_object);
-  planning_scene_interface_2.applyCollisionObject(collision_object_table);
-  planning_scene_interface_3.applyCollisionObject(collision_object_cube);
+  planning_scene_interface.applyCollisionObject(collision_object_table);
+  planning_scene_interface_2.applyCollisionObject(collision_object_coffee_machine_base);
+  planning_scene_interface_3.applyCollisionObject(collision_object_coffee_machine_head);
+  planning_scene_interface_4.applyCollisionObject(collision_object_coffee_machine_nozzle);
 
   RCLCPP_INFO(LOGGER, "Create Scene");
 
