@@ -49,8 +49,12 @@ int main(int argc, char **argv) {
   move_group_arm.setStartStateToCurrentState();
   move_group_gripper.setStartStateToCurrentState();
 
+
+RCLCPP_INFO(LOGGER, "Frame id: %s", move_group_arm.getPlanningFrame().c_str());
+RCLCPP_INFO(LOGGER, "End Effector Type: %s", move_group_arm.getEndEffectorLink().c_str());
+
   // Create collision object for the robot to avoid
-  auto const collision_object_coffee = [frame_id =
+  auto const collision_object_cube = [frame_id =
                                           move_group_arm.getPlanningFrame()] {
     moveit_msgs::msg::CollisionObject collision_object;
     collision_object.header.frame_id = frame_id;
@@ -60,79 +64,107 @@ int main(int argc, char **argv) {
     // Define the size of the box in meters
     primitive.type = primitive.CYLINDER;
     primitive.dimensions.resize(3);
-    primitive.dimensions[primitive.CYLINDER_HEIGHT] = 0.18;
-    primitive.dimensions[primitive.CYLINDER_RADIUS] = 0.0425;
+    primitive.dimensions[primitive.CYLINDER_HEIGHT] = 0.10;
+    primitive.dimensions[primitive.CYLINDER_RADIUS] = 0.02;
+
 
     // Define the pose of the box (relative to the frame_id)
-    geometry_msgs::msg::Pose coffee_pose;
-    coffee_pose.orientation.w = 1.0; 
-    coffee_pose.position.x = 0.2998;
-    coffee_pose.position.y = 0.46;
-    coffee_pose.position.z = 0.094;
+    geometry_msgs::msg::Pose box_pose;
+    box_pose.orientation.w =
+        1.0; // We can leave out the x, y, and z components of the quaternion
+             // since they are initialized to 0
+    box_pose.position.x = 0.3;
+    box_pose.position.y = 0.46;
+    box_pose.position.z = 0.05;
 
     collision_object.primitives.push_back(primitive);
-    collision_object.primitive_poses.push_back(coffee_pose);
+    collision_object.primitive_poses.push_back(box_pose);
     collision_object.operation = collision_object.ADD;
 
     return collision_object;
   }();
 
   // Add the collision object to the scene
-  moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
+  moveit::planning_interface::PlanningSceneInterface planning_scene_interface_3;
 
-  planning_scene_interface.applyCollisionObject(collision_object_coffee);
+  planning_scene_interface_3.applyCollisionObject(collision_object_cube);
 
   RCLCPP_INFO(LOGGER, "Create Collision");
 
-//   //   Close Gripper
+  //   Close Gripper
 
-//   RCLCPP_INFO(LOGGER, "Close Gripper!");
+  RCLCPP_INFO(LOGGER, "Close Gripper!");
 
-//   move_group_gripper.setNamedTarget("close");
+  move_group_gripper.setNamedTarget("close");
 
-//   moveit::planning_interface::MoveGroupInterface::Plan my_plan_gripper;
-//   bool success_gripper = (move_group_gripper.plan(my_plan_gripper) ==
-//                           moveit::core::MoveItErrorCode::SUCCESS);
+  moveit::planning_interface::MoveGroupInterface::Plan my_plan_gripper;
+  bool success_gripper = (move_group_gripper.plan(my_plan_gripper) ==
+                          moveit::core::MoveItErrorCode::SUCCESS);
 
-//   move_group_gripper.execute(my_plan_gripper);
+  move_group_gripper.execute(my_plan_gripper);
 
-//   // Go Home
-//   RCLCPP_INFO(LOGGER, "Going Home");
+  // Go Home
+  RCLCPP_INFO(LOGGER, "Going Home");
 
-//   move_group_arm.setNamedTarget("home");
+  move_group_arm.setNamedTarget("home");
 
-//   moveit::planning_interface::MoveGroupInterface::Plan my_plan_arm;
-//   bool success_arm = (move_group_arm.plan(my_plan_arm) ==
-//                       moveit::core::MoveItErrorCode::SUCCESS);
-//   move_group_arm.execute(my_plan_arm);
+  moveit::planning_interface::MoveGroupInterface::Plan my_plan_arm;
+  bool success_arm = (move_group_arm.plan(my_plan_arm) ==
+                      moveit::core::MoveItErrorCode::SUCCESS);
+  move_group_arm.execute(my_plan_arm);
 
-//   //   Pregrasp
-//   RCLCPP_INFO(LOGGER, "Pregrasp Position");
+  //   Pregrasp
+  RCLCPP_INFO(LOGGER, "Pregrasp Position");
 
-//   geometry_msgs::msg::Pose target_pose1;
-//   target_pose1.orientation.x = 1.0;
-//   target_pose1.orientation.y = 0.0;
-//   target_pose1.orientation.z = 0.0;
-//   target_pose1.orientation.w = 0.0;
+  geometry_msgs::msg::Pose target_pose1;
+  target_pose1.orientation.x = 0.5003;
+  target_pose1.orientation.y = 0.4996;
+  target_pose1.orientation.z = 0.5007;
+  target_pose1.orientation.w = -0.499;
 
-//   target_pose1.position.x = 0.343;
-//   target_pose1.position.y = 0.132;
-//   target_pose1.position.z = 0.30;
+  target_pose1.position.x = 0.3;
+  target_pose1.position.y = 0.132;
+  target_pose1.position.z = 0.10;
+  
+  /*Test code to check the exact rpy we need */
+//   double x = 0.3;  
+//   double y = 0.3;  
+//   double z = 0.20;
 
-//   move_group_arm.setPoseTarget(target_pose1);
+//   double roll = 1.57;  
+//   double pitch = -1.57;  
+//   double yaw = 3.14;
+//   move_group_arm.setPositionTarget (x,y,z);
+//   move_group_arm.setRPYTarget(roll,pitch,yaw);
 
-//   success_arm = (move_group_arm.plan(my_plan_arm) ==
-//                  moveit::core::MoveItErrorCode::SUCCESS);
 
-//   move_group_arm.execute(my_plan_arm);
+  move_group_arm.setPoseTarget(target_pose1);
 
-//   /* First, define the REMOVE object message*/
-//   moveit_msgs::msg::CollisionObject remove_object;
-//   remove_object.id = "cube";
-//   remove_object.header.frame_id = "world";
-//   remove_object.operation = remove_object.REMOVE;
-//   std::vector<std::string> object_ids;
-//   object_ids.push_back("cube");
+  success_arm = (move_group_arm.plan(my_plan_arm) ==
+                 moveit::core::MoveItErrorCode::SUCCESS);
+
+  move_group_arm.execute(my_plan_arm);
+
+    //   Open Gripper
+
+  RCLCPP_INFO(LOGGER, "Open Gripper!");
+
+  move_group_gripper.setNamedTarget("Open");
+
+  moveit::planning_interface::MoveGroupInterface::Plan my_plan_gripper;
+  success_gripper = (move_group_gripper.plan(my_plan_gripper) ==
+                          moveit::core::MoveItErrorCode::SUCCESS);
+
+  move_group_gripper.execute(my_plan_gripper);
+
+
+  /* First, define the REMOVE object message*/
+  moveit_msgs::msg::CollisionObject remove_object;
+  remove_object.id = "coffee";
+  remove_object.header.frame_id = "world";
+  remove_object.operation = remove_object.REMOVE;
+  std::vector<std::string> object_ids;
+  object_ids.push_back("coffee");
 
 //   // Open Gripper
 
@@ -164,8 +196,8 @@ int main(int argc, char **argv) {
 
 //   move_group_arm.execute(trajectory_approach);
 
-//   //   Remove  Collision Object
-//   planning_scene_interface.removeCollisionObjects(object_ids);
+  //   Remove  Collision Object
+  planning_scene_interface_3.removeCollisionObjects(object_ids);
 
 //   //   Close Gripper
 
@@ -195,35 +227,6 @@ int main(int argc, char **argv) {
 //       retreat_waypoints, eef_step, jump_threshold, trajectory_retreat);
 
 //   move_group_arm.execute(trajectory_retreat);
-
-//   // Rotate
-
-//   RCLCPP_INFO(LOGGER, "Rotating Arm");
-
-//   current_state_arm = move_group_arm.getCurrentState(10);
-//   current_state_arm->copyJointGroupPositions(joint_model_group_arm,
-//                                              joint_group_positions_arm);
-//   if (joint_group_positions_arm[0] < 0)
-//     joint_group_positions_arm[0] +=
-//         3.14; // Shoulder Pan else joint_group_positions_arm[0] -= 3.14;
-
-//   move_group_arm.setJointValueTarget(joint_group_positions_arm);
-
-//   success_arm = (move_group_arm.plan(my_plan_arm) ==
-//                  moveit::core::MoveItErrorCode::SUCCESS);
-
-//   move_group_arm.execute(my_plan_arm);
-
-//   // Open Gripper
-
-//   RCLCPP_INFO(LOGGER, "Release Object!");
-
-//   move_group_gripper.setNamedTarget("open");
-
-//   success_gripper = (move_group_gripper.plan(my_plan_gripper) ==
-//                      moveit::core::MoveItErrorCode::SUCCESS);
-
-//   move_group_gripper.execute(my_plan_gripper);
 
   rclcpp::shutdown();
   return 0;
