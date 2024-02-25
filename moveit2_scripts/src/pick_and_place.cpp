@@ -65,7 +65,7 @@ RCLCPP_INFO(LOGGER, "End Effector Type: %s", move_group_arm.getEndEffectorLink()
     primitive.type = primitive.CYLINDER;
     primitive.dimensions.resize(3);
     primitive.dimensions[primitive.CYLINDER_HEIGHT] = 0.10;
-    primitive.dimensions[primitive.CYLINDER_RADIUS] = 0.02;
+    primitive.dimensions[primitive.CYLINDER_RADIUS] = 0.04;
 
 
     // Define the pose of the box (relative to the frame_id)
@@ -149,9 +149,8 @@ RCLCPP_INFO(LOGGER, "End Effector Type: %s", move_group_arm.getEndEffectorLink()
 
   RCLCPP_INFO(LOGGER, "Open Gripper!");
 
-  move_group_gripper.setNamedTarget("Open");
+  move_group_gripper.setNamedTarget("open");
 
-  moveit::planning_interface::MoveGroupInterface::Plan my_plan_gripper;
   success_gripper = (move_group_gripper.plan(my_plan_gripper) ==
                           moveit::core::MoveItErrorCode::SUCCESS);
 
@@ -166,35 +165,24 @@ RCLCPP_INFO(LOGGER, "End Effector Type: %s", move_group_arm.getEndEffectorLink()
   std::vector<std::string> object_ids;
   object_ids.push_back("coffee");
 
-//   // Open Gripper
+  // Approach
+  RCLCPP_INFO(LOGGER, "Approach to object!");
 
-//   RCLCPP_INFO(LOGGER, "Open Gripper");
+  std::vector<geometry_msgs::msg::Pose> approach_waypoints;
+  target_pose1.position.y += 0.16;
+  approach_waypoints.push_back(target_pose1);
 
-//   move_group_gripper.setNamedTarget("open");
+  target_pose1.position.y += 0.16;
+  approach_waypoints.push_back(target_pose1);
 
-//   success_gripper = (move_group_gripper.plan(my_plan_gripper) ==
-//                      moveit::core::MoveItErrorCode::SUCCESS);
+  moveit_msgs::msg::RobotTrajectory trajectory_approach;
+  const double jump_threshold = 0.0;
+  const double eef_step = 0.01;
 
-//   move_group_gripper.execute(my_plan_gripper);
+  double fraction = move_group_arm.computeCartesianPath(
+      approach_waypoints, eef_step, jump_threshold, trajectory_approach);
 
-//   // Approach
-//   RCLCPP_INFO(LOGGER, "Approach to object!");
-
-//   std::vector<geometry_msgs::msg::Pose> approach_waypoints;
-//   target_pose1.position.z -= 0.14;
-//   approach_waypoints.push_back(target_pose1);
-
-//   target_pose1.position.z -= 0.14;
-//   approach_waypoints.push_back(target_pose1);
-
-//   moveit_msgs::msg::RobotTrajectory trajectory_approach;
-//   const double jump_threshold = 0.0;
-//   const double eef_step = 0.01;
-
-//   double fraction = move_group_arm.computeCartesianPath(
-//       approach_waypoints, eef_step, jump_threshold, trajectory_approach);
-
-//   move_group_arm.execute(trajectory_approach);
+  move_group_arm.execute(trajectory_approach);
 
   //   Remove  Collision Object
   planning_scene_interface_3.removeCollisionObjects(object_ids);
