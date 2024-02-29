@@ -52,6 +52,8 @@ int main(int argc, char **argv) {
 
 RCLCPP_INFO(LOGGER, "Frame id: %s", move_group_arm.getPlanningFrame().c_str());
 RCLCPP_INFO(LOGGER, "End Effector Type: %s", move_group_arm.getEndEffectorLink().c_str());
+RCLCPP_INFO(LOGGER, "Get Pose reference: %s", move_group_arm.getPoseReferenceFrame().c_str());
+
 
   // Create collision object for the robot to avoid
   auto const collision_object_cube = [frame_id =
@@ -123,17 +125,20 @@ RCLCPP_INFO(LOGGER, "End Effector Type: %s", move_group_arm.getEndEffectorLink()
   target_pose1.orientation.w = -0.499;
 
   target_pose1.position.x = 0.3;
-  target_pose1.position.y = 0.132;
+  target_pose1.position.y = 0.18;
   target_pose1.position.z = 0.10;
   
-  /*Test code to check the exact rpy we need */
+  /*Test code to check the exact xyz & rpy we need */
 //   double x = 0.3;  
 //   double y = 0.3;  
 //   double z = 0.20;
 
+  /*Execute order: yaw -> pitch -> roll*/
 //   double roll = 1.57;  
 //   double pitch = -1.57;  
 //   double yaw = 3.14;
+
+
 //   move_group_arm.setPositionTarget (x,y,z);
 //   move_group_arm.setRPYTarget(roll,pitch,yaw);
 
@@ -165,14 +170,17 @@ RCLCPP_INFO(LOGGER, "End Effector Type: %s", move_group_arm.getEndEffectorLink()
   std::vector<std::string> object_ids;
   object_ids.push_back("coffee");
 
+    /*Remove  Collision Object*/
+  planning_scene_interface_3.removeCollisionObjects(object_ids);
+
   // Approach
   RCLCPP_INFO(LOGGER, "Approach to object!");
 
   std::vector<geometry_msgs::msg::Pose> approach_waypoints;
-  target_pose1.position.y += 0.16;
+  target_pose1.position.y += 0.047;
   approach_waypoints.push_back(target_pose1);
 
-  target_pose1.position.y += 0.16;
+  target_pose1.position.y += 0.047;
   approach_waypoints.push_back(target_pose1);
 
   moveit_msgs::msg::RobotTrajectory trajectory_approach;
@@ -184,8 +192,32 @@ RCLCPP_INFO(LOGGER, "End Effector Type: %s", move_group_arm.getEndEffectorLink()
 
   move_group_arm.execute(trajectory_approach);
 
-  //   Remove  Collision Object
-  planning_scene_interface_3.removeCollisionObjects(object_ids);
+  // Take coffee
+  RCLCPP_INFO(LOGGER, "Take coffee");
+
+  move_group_gripper.setNamedTarget("hold");
+  success_gripper = (move_group_gripper.plan(my_plan_gripper) ==
+                          moveit::core::MoveItErrorCode::SUCCESS);
+
+  move_group_gripper.execute(my_plan_gripper);
+
+
+ /*Approach*/
+  RCLCPP_INFO(LOGGER, "Move up the coffee");
+  target_pose1.position.x -= 0.125;
+  target_pose1.position.y += 0.20;
+  target_pose1.position.z += 0.05;
+  approach_waypoints.push_back(target_pose1);
+
+  target_pose1.position.x -= 0.125;
+  target_pose1.position.y += 0.20;
+  target_pose1.position.z += 0.05;
+  approach_waypoints.push_back(target_pose1);
+
+  fraction = move_group_arm.computeCartesianPath(
+      approach_waypoints, eef_step, jump_threshold, trajectory_approach);
+
+  move_group_arm.execute(trajectory_approach);
 
 //   //   Close Gripper
 
