@@ -1,6 +1,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <Eigen/Eigen>
 
 #include "pcl_conversions/pcl_conversions.h"
 #include "rclcpp/logging.hpp"
@@ -12,6 +13,9 @@
 #include "coffee_delivery/hole_plate_segmentation.h"
 
 #include "pcl/common/io.h"
+#include "pcl/common/centroid.h"
+#include <pcl/common/common.h>
+
 #include "pcl/filters/passthrough.h"
 #include "pcl/filters/voxel_grid.h"
 #include "pcl_ros/transforms.hpp"
@@ -21,6 +25,7 @@
 #include "pcl/segmentation/extract_clusters.h"
 #include "pcl/filters/extract_indices.h"
 #include "pcl/segmentation/sac_segmentation.h"
+#include <pcl/segmentation/extract_clusters.h>
 
 #include <pcl/features/normal_3d.h>
 #include <pcl/sample_consensus/method_types.h>
@@ -57,10 +62,23 @@ public:
       qos.best_effort();
       filter_cloud_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
           "filter_cloud", qos);
-      object_cloud_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
-          "object_cloud", qos);
-      support_cloud_pub_ =
-          this->create_publisher<sensor_msgs::msg::PointCloud2>("support_cloud",
+      plate_cloud_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
+          "plate_cloud", qos);
+      holes_cloud_pub_ =
+          this->create_publisher<sensor_msgs::msg::PointCloud2>("holes_cloud",
+                                                                qos);
+
+      hole1_cloud_pub_ =
+          this->create_publisher<sensor_msgs::msg::PointCloud2>("hole_1_cloud",
+                                                                qos);
+      hole2_cloud_pub_ =
+          this->create_publisher<sensor_msgs::msg::PointCloud2>("hole_2_cloud",
+                                                                qos);
+      hole3_cloud_pub_ =
+          this->create_publisher<sensor_msgs::msg::PointCloud2>("hole_3_cloud",
+                                                                qos);
+      hole4_cloud_pub_ =
+          this->create_publisher<sensor_msgs::msg::PointCloud2>("hole_4_cloud",
                                                                 qos);
     }
 
@@ -107,7 +125,8 @@ public:
         "/wrist_rgbd_depth_sensor/points", points_qos,
         std::bind(&BasicHolePerception::cloud_callback, this, _1));
 
-    RCLCPP_INFO(LOGGER, "basic_grasping_perception initialized");
+    RCLCPP_INFO(LOGGER, "cafe_delivery_perception initialized");
+
   }
 
 private:
@@ -163,30 +182,50 @@ private:
     }
 
     // Run segmentation
-
-    pcl::PointCloud<pcl::PointXYZRGB> plate_cloud;
-    pcl::PointCloud<pcl::PointXYZRGB> hole_cloud;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr plate_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloud_vector;
+    // Create four instances of point clouds and store their pointers in the vector
+    for (int i = 0; i < 4; ++i) {
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        cloud_vector.push_back(hole_cloud);
+    }
+    // pcl::PointCloud<pcl::PointXYZRGB> plate_cloud;
+    // pcl::PointCloud<pcl::PointXYZRGB> hole_cloud;
     if (debug_) {
-      plate_cloud.header.frame_id = cloud_transformed->header.frame_id;
-      hole_cloud.header.frame_id = cloud_transformed->header.frame_id;
+      plate_cloud->header.frame_id = cloud_transformed->header.frame_id;
+      hole_cloud->header.frame_id = cloud_transformed->header.frame_id;
     }
     segment(cloud_transformed, plate_cloud, hole_cloud);
-
+    hole_seperation(plate_cloud, hole_cloud, cloud_vector);
     
     if (true) {
       sensor_msgs::msg::PointCloud2 cloud_msg;
 
-      pcl::toROSMsg(plate_cloud, cloud_msg);
-      object_cloud_pub_->publish(cloud_msg);
+      pcl::toROSMsg(*plate_cloud, cloud_msg);
+      plate_cloud_pub_->publish(cloud_msg);
 
-      pcl::toROSMsg(hole_cloud, cloud_msg);
-      support_cloud_pub_->publish(cloud_msg);
+      pcl::toROSMsg(*hole_cloud, cloud_msg);
+      holes_cloud_pub_->publish(cloud_msg);
+
+      pcl::toROSMsg(*cloud_vector[0], cloud_msg);
+      hole1_cloud_pub_->publish(cloud_msg);
+
+      pcl::toROSMsg(*cloud_vector[1], cloud_msg);
+      hole2_cloud_pub_->publish(cloud_msg);
+
+      pcl::toROSMsg(*cloud_vector[2], cloud_msg);
+      hole3_cloud_pub_->publish(cloud_msg);
+
+      pcl::toROSMsg(*cloud_vector[3], cloud_msg);
+      hole4_cloud_pub_->publish(cloud_msg);
+
     }
   }
 
   bool segment(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr &cloud_input,
-               pcl::PointCloud<pcl::PointXYZRGB> &plate_cloud,
-               pcl::PointCloud<pcl::PointXYZRGB> &hole_cloud) {
+                pcl::PointCloud<pcl::PointXYZRGB>::Ptr plate_cloud,
+             pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud) {
 
     RCLCPP_INFO(LOGGER, "object support segmentation starting...");
     // Convert to point cloud
@@ -225,7 +264,7 @@ private:
     extract_plane.setInputCloud(voxel_cloud_filtered);
     extract_plane.setIndices(inliers);
     extract_plane.setNegative(false);
-    extract_plane.filter(plate_cloud);
+    extract_plane.filter(*plate_cloud);
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered_store(new
     pcl::PointCloud<pcl::PointXYZRGB>);
@@ -258,11 +297,54 @@ private:
     outlier_filt.setMeanK(60);
     outlier_filt.setStddevMulThresh(1.0);
     outlier_filt.setInputCloud(cloud_filtered_store);
-    outlier_filt.filter(hole_cloud);
+    outlier_filt.filter(*hole_cloud);
 
     RCLCPP_INFO(LOGGER, "object support segmentation done processing.");
     return true;
   }
+
+  void hole_seperation( pcl::PointCloud<pcl::PointXYZRGB>::Ptr plate_cloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud, std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloud_vector){
+        
+    pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> cluster_extraction;
+    cluster_extraction.setInputCloud(hole_cloud);
+    cluster_extraction.setClusterTolerance(0.01); // Set the cluster tolerance (max. distance between points in a cluster)
+    cluster_extraction.setMinClusterSize(100);    // Set the minimum number of points required for a cluster
+    cluster_extraction.setMaxClusterSize(10000);   // Set the maximum number of points allowed for a cluster
+    std::vector<pcl::PointIndices> clusters;
+    cluster_extraction.extract(clusters);
+    
+    RCLCPP_INFO(LOGGER, "Hole cloud size: %zu", hole_cloud->size());
+    RCLCPP_INFO(LOGGER, "Cluster number: %zu", clusters.size());
+
+    // Define colors for each cluster
+    std::vector<std::vector<uint8_t>> cluster_colors = {
+        {0, 255, 0},    // Green
+        {255, 255, 0},  // Yellow
+        {0, 0, 255},    // Blue
+        {255, 0, 0}     // Red
+    };
+
+    int color_index = 0; // Index for selecting color from cluster_colors
+
+    pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices_;
+
+    extract_indices_.setInputCloud(hole_cloud);
+    for (size_t i = 0; i < clusters.size(); i++) {
+    extract_indices_.setIndices(pcl::PointIndicesPtr(new pcl::PointIndices(clusters[i])));
+    extract_indices_.filter(*cloud_vector[i]);
+    RCLCPP_INFO(LOGGER, "Cluster number: %zu", cloud_vector[i]->size());
+
+    std::vector<uint8_t> color = cluster_colors[i];
+        for (auto& point : cloud_vector[i]->points) {
+                point.r = color[0];
+                point.g = color[1];
+                point.b = color[2];
+            }
+    }
+
+  }
+
+
 
   bool debug_;
 
@@ -275,9 +357,13 @@ private:
 
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr filter_cloud_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr object_cloud_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-      support_cloud_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr plate_cloud_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr holes_cloud_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr hole1_cloud_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr hole2_cloud_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr hole3_cloud_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr hole4_cloud_pub_;
+
 
   pcl::PassThrough<pcl::PointXYZRGB> range_filter_x;
   pcl::PassThrough<pcl::PointXYZRGB> range_filter_z;
