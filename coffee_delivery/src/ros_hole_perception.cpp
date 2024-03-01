@@ -198,7 +198,8 @@ private:
     }
     segment(cloud_transformed, plate_cloud, hole_cloud);
     hole_seperation(plate_cloud, hole_cloud, cloud_vector);
-    
+    hole_number(cloud_vector);
+
     if (true) {
       sensor_msgs::msg::PointCloud2 cloud_msg;
 
@@ -315,6 +316,55 @@ private:
     
     RCLCPP_INFO(LOGGER, "Hole cloud size: %zu", hole_cloud->size());
     RCLCPP_INFO(LOGGER, "Cluster number: %zu", clusters.size());
+    
+    pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices_;
+    extract_indices_.setInputCloud(hole_cloud);
+
+    for (size_t i = 0; i < clusters.size(); i++) {
+    extract_indices_.setIndices(pcl::PointIndicesPtr(new pcl::PointIndices(clusters[i])));
+    extract_indices_.filter(*cloud_vector[i]);
+    RCLCPP_INFO(LOGGER, "Cluster number: %zu", cloud_vector[i]->size());
+
+    }
+
+  }
+  
+  void hole_number(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloud_vector){
+        
+    // Find centroid
+    Eigen::Vector4f centroid;
+    std::vector<Eigen::Vector4f> centroid_vector;
+    std::vector<Eigen::Vector2f> centroid_xy_vector;
+
+    for (size_t i = 0; i < cloud_vector.size(); ++i) {
+        pcl::compute3DCentroid(*cloud_vector[i], centroid);
+        centroid_vector.push_back(centroid);  
+        centroid_xy_vector.push_back(centroid.head<2>()); // Extract only x and y coordinates
+    }
+
+    // Calculate distances from each centroid to origin (0, 0, 0)
+    std::vector<float> distances;
+    for (const auto& centroid : centroid_xy_vector) {
+        float distance = centroid.norm(); // Calculate Euclidean norm
+        distances.push_back(distance);
+        RCLCPP_INFO(LOGGER, "Distance %zu is: %f", distances.size(), distance);
+    }
+
+    // Rearrange cloud_vector based on distances (sort it)
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> sorted_cloud_vector;
+    std::vector<std::size_t> indices(cloud_vector.size());
+    std::iota(indices.begin(), indices.end(), 0); 
+    std::sort(indices.begin(), indices.end(), [&](std::size_t i, std::size_t j) {
+        return distances[i] < distances[j]; // Sort based on distances
+    });
+
+    for (const auto& index : indices) {
+        sorted_cloud_vector.push_back(cloud_vector[index]);
+    }
+
+    // Assign sorted_cloud_vector back to cloud_vector
+    cloud_vector = sorted_cloud_vector;
+
 
     // Define colors for each cluster
     std::vector<std::vector<uint8_t>> cluster_colors = {
@@ -326,24 +376,17 @@ private:
 
     int color_index = 0; // Index for selecting color from cluster_colors
 
-    pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices_;
+    for (size_t i = 0; i < cloud_vector.size(); ++i) {
 
-    extract_indices_.setInputCloud(hole_cloud);
-    for (size_t i = 0; i < clusters.size(); i++) {
-    extract_indices_.setIndices(pcl::PointIndicesPtr(new pcl::PointIndices(clusters[i])));
-    extract_indices_.filter(*cloud_vector[i]);
-    RCLCPP_INFO(LOGGER, "Cluster number: %zu", cloud_vector[i]->size());
-
-    std::vector<uint8_t> color = cluster_colors[i];
-        for (auto& point : cloud_vector[i]->points) {
-                point.r = color[0];
-                point.g = color[1];
-                point.b = color[2];
-            }
+        std::vector<uint8_t> color = cluster_colors[i];
+            for (auto& point : cloud_vector[i]->points) {
+                    point.r = color[0];
+                    point.g = color[1];
+                    point.b = color[2];
+                }
     }
 
   }
-
 
 
   bool debug_;
