@@ -6,8 +6,10 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /PointCloud22
-        - /PointCloud22/Topic1
+        - /TF1/Frames1
+        - /Filter1/Topic1
+        - /plate1/Topic1
+        - /hole1/Topic1
       Splitter Ratio: 0.5
     Tree Height: 553
   - Class: rviz_common/Selection
@@ -27,7 +29,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: PointCloud2
+    SyncSource: hole
 Visualization Manager:
   Class: ""
   Displays:
@@ -85,7 +87,7 @@ Visualization Manager:
         base:
           Value: false
         base_link:
-          Value: false
+          Value: true
         base_link_inertia:
           Value: false
         flange:
@@ -119,9 +121,9 @@ Visualization Manager:
         wrist_3_link:
           Value: false
         wrist_rgbd_camera_depth_frame:
-          Value: true
+          Value: false
         wrist_rgbd_camera_depth_optical_frame:
-          Value: true
+          Value: false
         wrist_rgbd_camera_fisheye_frame:
           Value: false
         wrist_rgbd_camera_fisheye_optical_frame:
@@ -223,16 +225,16 @@ Visualization Manager:
       Channel Name: intensity
       Class: rviz_default_plugins/PointCloud2
       Color: 255; 255; 255
-      Color Transformer: ""
+      Color Transformer: RGB8
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
       Min Color: 0; 0; 0
       Min Intensity: 0
-      Name: PointCloud2
-      Position Transformer: ""
+      Name: Filter
+      Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 3
       Size (m): 0.009999999776482582
@@ -246,11 +248,79 @@ Visualization Manager:
         Value: /filter_cloud
       Use Fixed Frame: true
       Use rainbow: true
+      Value: false
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz_default_plugins/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: RGB8
+      Decay Time: 0
+      Enabled: false
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: plate
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.009999999776482582
+      Style: Flat Squares
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /object_cloud
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: false
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz_default_plugins/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: RGB8
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: hole
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.009999999776482582
+      Style: Flat Squares
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /support_cloud
+      Use Fixed Frame: true
+      Use rainbow: true
       Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: wrist_rgbd_camera_depth_frame
+    Fixed Frame: base_link
     Frame Rate: 30
   Name: root
   Tools:
@@ -293,25 +363,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 11.199999809265137
+      Distance: 1.084855556488037
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: -0.0025172517634928226
+        Y: 0.07416028529405594
+        Z: -0.03634773939847946
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7403978705406189
+      Pitch: 1.5497963428497314
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.2953970432281494
+      Yaw: 6.254055976867676
     Saved: ~
 Window Geometry:
   Displays:
