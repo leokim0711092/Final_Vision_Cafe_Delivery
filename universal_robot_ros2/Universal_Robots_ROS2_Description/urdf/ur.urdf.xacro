@@ -106,6 +106,10 @@
        <origin xyz="-0.2 -0.3 0.2" rpy="0 ${pi/3} ${pi/2}"/>
    </xacro:sensor_r430>
 
+    <xacro:sensor_r430 prefix="camera" parent="base_link" >
+       <origin xyz="0.8 0.5 0.2" rpy="0 ${pi/6} ${pi}"/>
+   </xacro:sensor_r430>
+
    <xacro:if value="$(arg sim_gazebo)">
     <!-- Gazebo plugins -->
     <gazebo reference="world">
