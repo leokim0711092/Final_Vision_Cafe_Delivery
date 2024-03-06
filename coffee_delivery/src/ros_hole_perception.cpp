@@ -3,11 +3,14 @@
 #include <vector>
 #include <Eigen/Eigen>
 
+#include "geometry_msgs/msg/detail/point__struct.hpp"
+#include "geometry_msgs/msg/detail/pose__struct.hpp"
 #include "pcl_conversions/pcl_conversions.h"
 #include "rclcpp/logging.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
+#include "geometry_msgs/msg/point.hpp"
 #include "tf2_ros/transform_listener.h"
 
 #include "coffee_delivery/hole_plate_segmentation.h"
@@ -18,14 +21,20 @@
 
 #include "pcl/filters/passthrough.h"
 #include "pcl/filters/voxel_grid.h"
-#include "pcl_ros/transforms.hpp"
 #include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/filters/voxel_grid.h>
-#include "pcl/point_types.h"
-#include "pcl/segmentation/extract_clusters.h"
 #include "pcl/filters/extract_indices.h"
+#include <pcl/filters/project_inliers.h>
+
+#include <pcl/point_cloud.h> 
+#include "pcl/point_types.h"
+#include "pcl_ros/transforms.hpp"
+
+#include "pcl/segmentation/extract_clusters.h"
 #include "pcl/segmentation/sac_segmentation.h"
 #include <pcl/segmentation/extract_clusters.h>
+
+#include <pcl/ModelCoefficients.h>
 
 #include <pcl/features/normal_3d.h>
 #include <pcl/sample_consensus/method_types.h>
@@ -184,14 +193,14 @@ private:
     // Run segmentation
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr plate_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloud_vector;
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloud_vector
+    ;
     // Create four instances of point clouds and store their pointers in the vector
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 4; i++) {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         cloud_vector.push_back(hole_cloud);
     }
-    // pcl::PointCloud<pcl::PointXYZRGB> plate_cloud;
-    // pcl::PointCloud<pcl::PointXYZRGB> hole_cloud;
+
     if (debug_) {
       plate_cloud->header.frame_id = cloud_transformed->header.frame_id;
       hole_cloud->header.frame_id = cloud_transformed->header.frame_id;
@@ -200,7 +209,7 @@ private:
     hole_seperation(plate_cloud, hole_cloud, cloud_vector);
     hole_number(cloud_vector);
 
-    if (true) {
+    if (debug_) {
       sensor_msgs::msg::PointCloud2 cloud_msg;
 
       pcl::toROSMsg(*plate_cloud, cloud_msg);
@@ -220,8 +229,14 @@ private:
 
       pcl::toROSMsg(*cloud_vector[3], cloud_msg);
       hole4_cloud_pub_->publish(cloud_msg);
-
+    
     }
+
+    hole_projection(cloud_vector, hole_cloud);
+    std::vector<float> xc, yc, r;
+    float zc;   
+    estimateCircleParams(cloud_vector, xc, yc, zc ,r);
+
   }
 
   bool segment(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr &cloud_input,
@@ -292,8 +307,7 @@ private:
     extract_hole.setNegative(true);
     extract_hole.filter(*cloud_filtered_store);
 
-    pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB>
-          outlier_filt;
+    pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB> outlier_filt;
 
     outlier_filt.setMeanK(60);
     outlier_filt.setStddevMulThresh(1.0);
@@ -304,7 +318,7 @@ private:
     return true;
   }
 
-  void hole_seperation( pcl::PointCloud<pcl::PointXYZRGB>::Ptr plate_cloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud, std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloud_vector){
+  void hole_seperation( pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &hole_cloud, std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector){
         
     pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> cluster_extraction;
     cluster_extraction.setInputCloud(hole_cloud);
@@ -314,8 +328,7 @@ private:
     std::vector<pcl::PointIndices> clusters;
     cluster_extraction.extract(clusters);
     
-    RCLCPP_INFO(LOGGER, "Hole cloud size: %zu", hole_cloud->size());
-    RCLCPP_INFO(LOGGER, "Cluster number: %zu", clusters.size());
+    RCLCPP_INFO(LOGGER, "Hole cloud size: %zu, Cluster amount: %zu ", hole_cloud->size(), clusters.size());
     
     pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices_;
     extract_indices_.setInputCloud(hole_cloud);
@@ -323,13 +336,13 @@ private:
     for (size_t i = 0; i < clusters.size(); i++) {
     extract_indices_.setIndices(pcl::PointIndicesPtr(new pcl::PointIndices(clusters[i])));
     extract_indices_.filter(*cloud_vector[i]);
-    RCLCPP_INFO(LOGGER, "Cluster number: %zu", cloud_vector[i]->size());
+    RCLCPP_INFO(LOGGER, "Cluster %zu size: %zu", i+1 ,cloud_vector[i]->size());
 
     }
 
   }
   
-  void hole_number(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloud_vector){
+  void hole_number(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector){
         
     // Find centroid
     Eigen::Vector4f centroid;
@@ -347,7 +360,6 @@ private:
     for (const auto& centroid : centroid_xy_vector) {
         float distance = centroid.norm(); // Calculate Euclidean norm
         distances.push_back(distance);
-        RCLCPP_INFO(LOGGER, "Distance %zu is: %f", distances.size(), distance);
     }
 
     // Rearrange cloud_vector based on distances (sort it)
@@ -388,6 +400,92 @@ private:
 
   }
 
+  void hole_projection(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &hole_cloud){
+        
+    pcl::PointXYZRGB Min_pt, Max_pt;
+    pcl::getMinMax3D(*hole_cloud, Min_pt, Max_pt);
+
+    RCLCPP_INFO(LOGGER, "Project to Min z %f", Min_pt.z);
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> proj_vector;
+
+   for (size_t i = 0; i < cloud_vector.size(); ++i) {
+
+        pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+        pcl::ModelCoefficients::Ptr coefficients_s(new pcl::ModelCoefficients);
+        pcl::SACSegmentation<pcl::PointXYZRGB> seg;
+
+        seg.setInputCloud(cloud_vector[i]);
+        seg.setOptimizeCoefficients(true);
+        seg.setModelType(pcl::SACMODEL_PLANE);
+        seg.setMaxIterations(100);
+        seg.setDistanceThreshold(0.001);
+        seg.segment(*inliers, *coefficients_s);
+
+        // Extract planar part for message
+        pcl::ExtractIndices<pcl::PointXYZRGB> extract_plane;
+        extract_plane.setInputCloud(cloud_vector[i]);
+        extract_plane.setIndices(inliers);
+        extract_plane.setNegative(true);
+        extract_plane.filter(*cloud_vector[i]);
+        
+        // Create a set of planar coefficients with X=Y=0,Z=min_z
+        pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients ());
+        coefficients->values.resize (4);
+        coefficients->values[0] = coefficients->values[1] = 0;
+        coefficients->values[2] = 1;
+        coefficients->values[3] = -Min_pt.z;
+
+        // Create the filtering object
+        pcl::ProjectInliers<pcl::PointXYZRGB> proj;
+        proj.setModelType (pcl::SACMODEL_PLANE);
+        proj.setInputCloud (cloud_vector[i]);
+        proj.setModelCoefficients (coefficients);
+        proj.filter (*cloud_vector[i]);        
+
+    }
+
+
+
+  }
+
+  // Function to estimate circle parameters using least squares fitting
+  void estimateCircleParams(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector, std::vector<float>& xc, std::vector<float>& yc, float zc, std::vector<float>& r) {
+    
+    pcl::PointXYZRGB min_pt, max_pt;
+    pcl::getMinMax3D(*cloud_vector[0], min_pt, max_pt);
+    zc = (2*min_pt.z + 0.14)/2.0;
+
+    for (size_t i = 0; i < cloud_vector.size(); ++i) {
+        // Number of points
+        int N = cloud_vector[i]->size();
+
+        // Prepare matrices
+        Eigen::MatrixXd A(N, 3);
+        Eigen::MatrixXd B(N, 1);
+        for (int j = 0; j < N; ++j) {
+            A(j, 0) = cloud_vector[i]->points[j].x;
+            A(j, 1) = cloud_vector[i]->points[j].y;
+            A(j, 2) = 1;
+            B(j) = cloud_vector[i]->points[j].x * cloud_vector[i]->points[j].x + cloud_vector[i]->points[j].y * cloud_vector[i]->points[j].y;
+        }
+
+        // Least square approximation
+        Eigen::Vector3d X = (A.transpose() * A).ldlt().solve(A.transpose() * B);
+
+        // Calculate circle parameters
+        xc.push_back(X(0) / 2);
+        yc.push_back(X(1) / 2);
+        r.push_back(sqrt(4 * X(2) + X(0) * X(0) + X(1) * X(1)) / 2);
+
+        // 1.25 is coffee bottom radius. The dae pose is located at the x border and y center, so the x needs to minus radius and the y,z  don't need
+        RCLCPP_INFO(LOGGER, "Hole %zu center is: (%f, %f, %f)", i+1, xc[i]+ 13.9 - 0.0125,  yc[i]-18.56, zc+1.032);
+        RCLCPP_INFO(LOGGER, "Hole %zu center is: (%f, %f, %f)", i+1, xc[i],  yc[i], zc);
+        RCLCPP_INFO(LOGGER, "Hole %zu radius is: %f", i+1, r[i]);
+
+    }
+  }
+
+
 
   bool debug_;
 
@@ -407,15 +505,12 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr hole3_cloud_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr hole4_cloud_pub_;
 
-
   pcl::PassThrough<pcl::PointXYZRGB> range_filter_x;
   pcl::PassThrough<pcl::PointXYZRGB> range_filter_z;
   pcl::VoxelGrid<pcl::PointXYZRGB> voxel_grid_;
-//   pcl::SACSegmentation<pcl::PointXYZRGB,  pcl::Normal> segment_plate;
-//   pcl::SACSegmentation<pcl::PointXYZRGB> segment_hole;
+
   pcl::SACSegmentationFromNormals<pcl::PointXYZRGB, pcl::Normal> segment_plate; 
   pcl::SACSegmentationFromNormals<pcl::PointXYZRGB, pcl::Normal> segment_hole; 
-
 
   pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB>
           outliers_filter;
