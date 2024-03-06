@@ -25,7 +25,7 @@
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>        
-          <mesh filename="package://barista_description/meshes/barista/TOP_collision_lip_sd.stl"/>
+          <mesh filename="package://barista_description/meshes/barista/TOP_colour_1.dae"/>
         </geometry>
       </collision>
       <inertial>
