@@ -66,8 +66,8 @@ RCLCPP_INFO(LOGGER, "Get Pose reference: %s", move_group_arm.getPoseReferenceFra
     // Define the size of the box in meters
     primitive.type = primitive.CYLINDER;
     primitive.dimensions.resize(3);
-    primitive.dimensions[primitive.CYLINDER_HEIGHT] = 0.10;
-    primitive.dimensions[primitive.CYLINDER_RADIUS] = 0.04;
+    primitive.dimensions[primitive.CYLINDER_HEIGHT] = 0.14;
+    primitive.dimensions[primitive.CYLINDER_RADIUS] = 0.032;
 
 
     // Define the pose of the box (relative to the frame_id)
@@ -124,7 +124,7 @@ RCLCPP_INFO(LOGGER, "Get Pose reference: %s", move_group_arm.getPoseReferenceFra
   target_pose1.orientation.z = 0.5007;
   target_pose1.orientation.w = -0.499;
 
-  target_pose1.position.x = 0.3;
+  target_pose1.position.x = 0.3125;
   target_pose1.position.y = 0.18;
   target_pose1.position.z = 0.10;
   
@@ -177,10 +177,7 @@ RCLCPP_INFO(LOGGER, "Get Pose reference: %s", move_group_arm.getPoseReferenceFra
   RCLCPP_INFO(LOGGER, "Approach to object!");
 
   std::vector<geometry_msgs::msg::Pose> approach_waypoints;
-  target_pose1.position.y += 0.047;
-  approach_waypoints.push_back(target_pose1);
-
-  target_pose1.position.y += 0.047;
+  target_pose1.position.y += 0.090;
   approach_waypoints.push_back(target_pose1);
 
   moveit_msgs::msg::RobotTrajectory trajectory_approach;
@@ -204,15 +201,15 @@ RCLCPP_INFO(LOGGER, "Get Pose reference: %s", move_group_arm.getPoseReferenceFra
 
  /*Approach*/
   RCLCPP_INFO(LOGGER, "Move up the coffee");
-  target_pose1.position.x -= 0.125;
-  target_pose1.position.y += 0.20;
-  target_pose1.position.z += 0.05;
+  target_pose1.position.z += 0.12;
   approach_waypoints.push_back(target_pose1);
 
-  target_pose1.position.x -= 0.125;
-  target_pose1.position.y += 0.20;
-  target_pose1.position.z += 0.05;
+  target_pose1.position.x -= 0.275;
   approach_waypoints.push_back(target_pose1);
+
+  target_pose1.position.y += 0.22;
+  approach_waypoints.push_back(target_pose1);
+
 
   fraction = move_group_arm.computeCartesianPath(
       approach_waypoints, eef_step, jump_threshold, trajectory_approach);

@@ -1,0 +1,12 @@
+1. Move group
+source install/setup.bash
+ros2 launch moveit_config_sim move_group.launch.py
+
+2. rviz
+source install/setup.bash
+ros2 launch moveit_config_sim moveit_rviz.launch.py
+
+3. moveit2_scripts
+colcon build --packages-select moveit2_scripts
+source install/setup.bash
+ros2 launch moveit2_scripts pick_and_place.launch.py
