@@ -34,6 +34,7 @@
 #include "pcl/segmentation/sac_segmentation.h"
 #include <pcl/segmentation/extract_clusters.h>
 
+#include <pcl/surface/convex_hull.h>
 #include <pcl/ModelCoefficients.h>
 
 #include <pcl/features/normal_3d.h>
@@ -62,6 +63,8 @@ public:
     world_frame_ =
         this->declare_parameter<std::string>("frame_id", "base_link");
 
+    camera_topic_ =
+        this->declare_parameter<std::string>("camera_topic", "/wrist_rgbd_depth_sensor/points");
   // cluster_tolerance: minimum separation distance of two objects
     cluster_tolerance = this->declare_parameter<double>("cluster_tolerance", 0.01);
 
@@ -92,15 +95,15 @@ public:
     }
 
     // Range filter for cloud
-    range_filter_x.setFilterFieldName("x");
-    range_filter_x.setFilterLimits(-0.7, 0.2);
+    range_filter_y.setFilterFieldName("y");
+    range_filter_y.setFilterLimits(-0.20, 0.28);
 
     range_filter_z.setFilterFieldName("z");
-    range_filter_z.setFilterLimits(0, 0.95);
+    range_filter_z.setFilterLimits(-0.6, 0.0);
 
     // StatisticalOutlierRemoval filter
-    outliers_filter.setMeanK(150);
-    outliers_filter.setStddevMulThresh(0.8);
+    outliers_filter.setMeanK(50);
+    outliers_filter.setStddevMulThresh(2.5);
 
     //   voxel grid the data before segmenting
     double leaf_size;
@@ -117,11 +120,11 @@ public:
     //segment hole
     segment_hole.setOptimizeCoefficients(true);
     segment_hole.setModelType (pcl::SACMODEL_CYLINDER);
-    segment_hole.setNormalDistanceWeight(0.1);
+    segment_hole.setNormalDistanceWeight(0.001);
     segment_hole.setMethodType (pcl::SAC_RANSAC);
     segment_hole.setMaxIterations(10000);
-    segment_hole.setRadiusLimits (0, 0.04);
-    segment_hole.setDistanceThreshold(cluster_tolerance);
+    segment_hole.setRadiusLimits (0.06, 0.2);
+    segment_hole.setDistanceThreshold(0.1);
 
     // Setup TF2
     buffer_.reset(new tf2_ros::Buffer(this->get_clock()));
@@ -129,9 +132,14 @@ public:
 
     // Subscribe to head camera cloud
     rclcpp::QoS points_qos(10);
-    points_qos.best_effort();
+    if (camera_topic_ =="/wrist_rgbd_depth_sensor/points") {
+        points_qos.best_effort();
+    }else {
+        points_qos.reliable();
+    }
+
     cloud_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-        "/wrist_rgbd_depth_sensor/points", points_qos,
+        camera_topic_ , points_qos,
         std::bind(&BasicHolePerception::cloud_callback, this, _1));
 
     RCLCPP_INFO(LOGGER, "cafe_delivery_perception initialized");
@@ -146,55 +154,50 @@ private:
         std::make_shared<pcl::PointCloud<pcl::PointXYZRGB>>();
     pcl::fromROSMsg(*msg, *cloud);
 
-    RCLCPP_DEBUG(LOGGER, "Cloud recieved with %d points.",
-                 static_cast<int>(cloud->points.size()));
-
-    // Filter out noisy long-range points
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered_z(
-        new pcl::PointCloud<pcl::PointXYZRGB>);
-
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered_x(
-        new pcl::PointCloud<pcl::PointXYZRGB>);
-    range_filter_z.setInputCloud(cloud);
-    range_filter_z.filter(*cloud_filtered_z);
-
-    range_filter_x.setInputCloud(cloud_filtered_z);
-    range_filter_x.filter(*cloud_filtered_x);
-
-    RCLCPP_DEBUG(LOGGER, "Filtered for range, now %d points.",
-                 static_cast<int>(cloud_filtered_x->points.size()));
-    RCLCPP_DEBUG(LOGGER, "Filtered for range, now %d points.",
-                 static_cast<int>(cloud_filtered_z->points.size()));
-
-    // StatisticalOutlierRemoval filter
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered_outlier(
-        new pcl::PointCloud<pcl::PointXYZRGB>);
-
-    outliers_filter.setInputCloud(cloud_filtered_x);
-    outliers_filter.filter(*cloud_filtered_outlier);
-
-    if (debug_) {
-      sensor_msgs::msg::PointCloud2 cloud_msg;
-
-      pcl::toROSMsg(*cloud_filtered_outlier, cloud_msg);
-      filter_cloud_pub_->publish(cloud_msg);
-    }
-
     // Transform to grounded (base_link)
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_transformed(
         new pcl::PointCloud<pcl::PointXYZRGB>);
-    if (!pcl_ros::transformPointCloud(world_frame_, *cloud_filtered_outlier,
+    if (!pcl_ros::transformPointCloud(world_frame_, *cloud,
                                       *cloud_transformed, *buffer_)) {
       RCLCPP_ERROR(LOGGER, "Error transforming to frame %s",
                    world_frame_.c_str());
       return;
     }
 
+    RCLCPP_DEBUG(LOGGER, "Cloud recieved with %d points.",
+                 static_cast<int>(cloud->points.size()));
+
+    // Filter out noisy long-range points
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered(
+        new pcl::PointCloud<pcl::PointXYZRGB>);
+
+    range_filter_z.setInputCloud(cloud_transformed);
+    range_filter_z.filter(*cloud_filtered);
+    RCLCPP_DEBUG(LOGGER, "Filtered for range, now %d points.",
+                 static_cast<int>(cloud_filtered->points.size()));
+
+    range_filter_y.setInputCloud(cloud_filtered);
+    range_filter_y.filter(*cloud_filtered);
+
+    RCLCPP_DEBUG(LOGGER, "Filtered for range, now %d points.",
+                 static_cast<int>(cloud_filtered->points.size()));
+
+    // StatisticalOutlierRemoval filter
+    outliers_filter.setInputCloud(cloud_filtered);
+    outliers_filter.filter(*cloud_filtered);
+
+    if (debug_) {
+      sensor_msgs::msg::PointCloud2 cloud_msg;
+
+      pcl::toROSMsg(*cloud_filtered, cloud_msg);
+      filter_cloud_pub_->publish(cloud_msg);
+    }
+
     // Run segmentation
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr plate_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloud_vector
-    ;
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloud_vector;
+
     // Create four instances of point clouds and store their pointers in the vector
     for (int i = 0; i < 4; i++) {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -202,12 +205,13 @@ private:
     }
 
     if (debug_) {
-      plate_cloud->header.frame_id = cloud_transformed->header.frame_id;
-      hole_cloud->header.frame_id = cloud_transformed->header.frame_id;
+      plate_cloud->header.frame_id = cloud_filtered->header.frame_id;
+      hole_cloud->header.frame_id = cloud_filtered->header.frame_id;
     }
-    segment(cloud_transformed, plate_cloud, hole_cloud);
+    segment(cloud_filtered, plate_cloud, hole_cloud);
     hole_seperation(plate_cloud, hole_cloud, cloud_vector);
     hole_number(cloud_vector);
+    hole_projection(cloud_vector, hole_cloud);
 
     if (debug_) {
       sensor_msgs::msg::PointCloud2 cloud_msg;
@@ -232,7 +236,7 @@ private:
     
     }
 
-    hole_projection(cloud_vector, hole_cloud);
+    // hole_projection(cloud_vector, hole_cloud);
     std::vector<float> xc, yc, r;
     float zc;   
     estimateCircleParams(cloud_vector, xc, yc, zc ,r);
@@ -248,8 +252,7 @@ private:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZRGB>>();
 
     // process the cloud with a voxel grid
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxel_cloud_filtered(new
-    pcl::PointCloud<pcl::PointXYZRGB>);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxel_cloud_filtered(new pcl::PointCloud<pcl::PointXYZRGB>);
 
 
     voxel_grid_.setInputCloud(cloud_input);
@@ -288,29 +291,29 @@ private:
     //Remove the planar inliers, extract the rest
     extract_plane.setNegative (true);
     extract_plane.filter(*cloud_filtered_store);
-    extract_normals.setNegative (true);
-    extract_normals.setInputCloud (cloud_normals_plate);
-    extract_normals.setIndices (inliers);
-    extract_normals.filter (*cloud_normals_hole);
+    // extract_normals.setNegative (true);
+    // extract_normals.setInputCloud (cloud_normals_plate);
+    // extract_normals.setIndices (inliers);
+    // extract_normals.filter (*cloud_normals_hole);
 
-    pcl::PointIndices::Ptr inliers_hole(new pcl::PointIndices);
-    pcl::ModelCoefficients::Ptr coefficients_hole(new pcl::ModelCoefficients);
+    // pcl::PointIndices::Ptr inliers_hole(new pcl::PointIndices);
+    // pcl::ModelCoefficients::Ptr coefficients_hole(new pcl::ModelCoefficients);
 
-    segment_hole.setInputCloud(cloud_filtered_store);
-    segment_hole.setInputNormals(cloud_normals_hole);
-    segment_hole.segment(*inliers_hole, *coefficients_hole);
+    // segment_hole.setInputCloud(cloud_filtered_store);
+    // segment_hole.setInputNormals(cloud_normals_hole);
+    // segment_hole.segment(*inliers_hole, *coefficients_hole);
 
     // Extract planar part for message
-    pcl::ExtractIndices<pcl::PointXYZRGB> extract_hole;
-    extract_hole.setInputCloud(cloud_filtered_store);
-    extract_hole.setIndices(inliers_hole);
-    extract_hole.setNegative(true);
-    extract_hole.filter(*cloud_filtered_store);
-
+    // pcl::ExtractIndices<pcl::PointXYZRGB> extract_hole;
+    // extract_hole.setInputCloud(cloud_filtered_store);
+    // extract_hole.setIndices(inliers_hole);
+    // extract_hole.setNegative(true);
+    // extract_hole.filter(*hole_cloud);
+    
     pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB> outlier_filt;
 
-    outlier_filt.setMeanK(60);
-    outlier_filt.setStddevMulThresh(1.0);
+    outlier_filt.setMeanK(150);
+    outlier_filt.setStddevMulThresh(2.5);
     outlier_filt.setInputCloud(cloud_filtered_store);
     outlier_filt.filter(*hole_cloud);
 
@@ -418,7 +421,7 @@ private:
         seg.setOptimizeCoefficients(true);
         seg.setModelType(pcl::SACMODEL_PLANE);
         seg.setMaxIterations(100);
-        seg.setDistanceThreshold(0.001);
+        seg.setDistanceThreshold(0.005);
         seg.segment(*inliers, *coefficients_s);
 
         // Extract planar part for message
@@ -442,6 +445,11 @@ private:
         proj.setModelCoefficients (coefficients);
         proj.filter (*cloud_vector[i]);        
 
+        pcl::ConvexHull<pcl::PointXYZRGB> convex_hull;
+        convex_hull.setInputCloud(cloud_vector[i]);
+        convex_hull.setDimension(2);
+        convex_hull.reconstruct(*cloud_vector[i]);
+        
     }
 
 
@@ -492,6 +500,8 @@ private:
   std::shared_ptr<tf2_ros::Buffer> buffer_;
   std::shared_ptr<tf2_ros::TransformListener> listener_;
   std::string world_frame_;
+  std::string camera_topic_;
+
   double cluster_tolerance;
 
   //   std::shared_ptr<HolePlateSegmentation> segmentation_;
@@ -505,7 +515,7 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr hole3_cloud_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr hole4_cloud_pub_;
 
-  pcl::PassThrough<pcl::PointXYZRGB> range_filter_x;
+  pcl::PassThrough<pcl::PointXYZRGB> range_filter_y;
   pcl::PassThrough<pcl::PointXYZRGB> range_filter_z;
   pcl::VoxelGrid<pcl::PointXYZRGB> voxel_grid_;
 
