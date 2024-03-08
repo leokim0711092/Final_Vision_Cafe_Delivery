@@ -80,17 +80,8 @@ public:
           this->create_publisher<sensor_msgs::msg::PointCloud2>("holes_cloud",
                                                                 qos);
 
-      hole1_cloud_pub_ =
-          this->create_publisher<sensor_msgs::msg::PointCloud2>("hole_1_cloud",
-                                                                qos);
-      hole2_cloud_pub_ =
-          this->create_publisher<sensor_msgs::msg::PointCloud2>("hole_2_cloud",
-                                                                qos);
-      hole3_cloud_pub_ =
-          this->create_publisher<sensor_msgs::msg::PointCloud2>("hole_3_cloud",
-                                                                qos);
-      hole4_cloud_pub_ =
-          this->create_publisher<sensor_msgs::msg::PointCloud2>("hole_4_cloud",
+      colored_cloud_pub_ =
+          this->create_publisher<sensor_msgs::msg::PointCloud2>("color_hole_cloud",
                                                                 qos);
     }
 
@@ -120,11 +111,11 @@ public:
     //segment hole
     segment_hole.setOptimizeCoefficients(true);
     segment_hole.setModelType (pcl::SACMODEL_CYLINDER);
-    segment_hole.setNormalDistanceWeight(0.001);
+    segment_hole.setNormalDistanceWeight(0.1);
     segment_hole.setMethodType (pcl::SAC_RANSAC);
     segment_hole.setMaxIterations(10000);
-    segment_hole.setRadiusLimits (0.06, 0.2);
-    segment_hole.setDistanceThreshold(0.1);
+    segment_hole.setRadiusLimits (0.12, 0.25);
+    segment_hole.setDistanceThreshold(0.05);
 
     // Setup TF2
     buffer_.reset(new tf2_ros::Buffer(this->get_clock()));
@@ -198,23 +189,19 @@ private:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloud_vector;
 
-    // Create four instances of point clouds and store their pointers in the vector
-    for (int i = 0; i < 4; i++) {
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        cloud_vector.push_back(hole_cloud);
-    }
-
     if (debug_) {
       plate_cloud->header.frame_id = cloud_filtered->header.frame_id;
       hole_cloud->header.frame_id = cloud_filtered->header.frame_id;
     }
     segment(cloud_filtered, plate_cloud, hole_cloud);
     hole_seperation(plate_cloud, hole_cloud, cloud_vector);
+
     hole_number(cloud_vector);
     hole_projection(cloud_vector, hole_cloud);
 
     if (debug_) {
       sensor_msgs::msg::PointCloud2 cloud_msg;
+      sensor_msgs::msg::PointCloud2 store_msg;
 
       pcl::toROSMsg(*plate_cloud, cloud_msg);
       plate_cloud_pub_->publish(cloud_msg);
@@ -222,17 +209,21 @@ private:
       pcl::toROSMsg(*hole_cloud, cloud_msg);
       holes_cloud_pub_->publish(cloud_msg);
 
-      pcl::toROSMsg(*cloud_vector[0], cloud_msg);
-      hole1_cloud_pub_->publish(cloud_msg);
 
-      pcl::toROSMsg(*cloud_vector[1], cloud_msg);
-      hole2_cloud_pub_->publish(cloud_msg);
+      for (size_t i = 0; i < cloud_vector.size(); ++i) {
+        pcl::toROSMsg(*cloud_vector[i], cloud_msg);
+        if( i == 0){
+            store_msg = cloud_msg; 
+        }else{
+         // Concatenate the point cloud data
+        store_msg.width += cloud_msg.width;
+        store_msg.row_step += cloud_msg.row_step;
+        store_msg.data.insert(store_msg.data.end(), cloud_msg.data.begin(), cloud_msg.data.end());
+        }
+      }        
 
-      pcl::toROSMsg(*cloud_vector[2], cloud_msg);
-      hole3_cloud_pub_->publish(cloud_msg);
+      colored_cloud_pub_->publish(store_msg);
 
-      pcl::toROSMsg(*cloud_vector[3], cloud_msg);
-      hole4_cloud_pub_->publish(cloud_msg);
     
     }
 
@@ -291,30 +282,30 @@ private:
     //Remove the planar inliers, extract the rest
     extract_plane.setNegative (true);
     extract_plane.filter(*cloud_filtered_store);
-    // extract_normals.setNegative (true);
-    // extract_normals.setInputCloud (cloud_normals_plate);
-    // extract_normals.setIndices (inliers);
-    // extract_normals.filter (*cloud_normals_hole);
+    extract_normals.setNegative (true);
+    extract_normals.setInputCloud (cloud_normals_plate);
+    extract_normals.setIndices (inliers);
+    extract_normals.filter (*cloud_normals_hole);
 
-    // pcl::PointIndices::Ptr inliers_hole(new pcl::PointIndices);
-    // pcl::ModelCoefficients::Ptr coefficients_hole(new pcl::ModelCoefficients);
+    pcl::PointIndices::Ptr inliers_hole(new pcl::PointIndices);
+    pcl::ModelCoefficients::Ptr coefficients_hole(new pcl::ModelCoefficients);
 
-    // segment_hole.setInputCloud(cloud_filtered_store);
-    // segment_hole.setInputNormals(cloud_normals_hole);
-    // segment_hole.segment(*inliers_hole, *coefficients_hole);
+    segment_hole.setInputCloud(cloud_filtered_store);
+    segment_hole.setInputNormals(cloud_normals_hole);
+    segment_hole.segment(*inliers_hole, *coefficients_hole);
 
     // Extract planar part for message
-    // pcl::ExtractIndices<pcl::PointXYZRGB> extract_hole;
-    // extract_hole.setInputCloud(cloud_filtered_store);
-    // extract_hole.setIndices(inliers_hole);
-    // extract_hole.setNegative(true);
-    // extract_hole.filter(*hole_cloud);
+    pcl::ExtractIndices<pcl::PointXYZRGB> extract_hole;
+    extract_hole.setInputCloud(cloud_filtered_store);
+    extract_hole.setIndices(inliers_hole);
+    extract_hole.setNegative(true);
+    extract_hole.filter(*hole_cloud);
     
     pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB> outlier_filt;
-
+    
+    outlier_filt.setInputCloud(hole_cloud);
     outlier_filt.setMeanK(150);
     outlier_filt.setStddevMulThresh(2.5);
-    outlier_filt.setInputCloud(cloud_filtered_store);
     outlier_filt.filter(*hole_cloud);
 
     RCLCPP_INFO(LOGGER, "object support segmentation done processing.");
@@ -337,6 +328,9 @@ private:
     extract_indices_.setInputCloud(hole_cloud);
 
     for (size_t i = 0; i < clusters.size(); i++) {
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    cloud_vector.push_back(hole_cloud);
+
     extract_indices_.setIndices(pcl::PointIndicesPtr(new pcl::PointIndices(clusters[i])));
     extract_indices_.filter(*cloud_vector[i]);
     RCLCPP_INFO(LOGGER, "Cluster %zu size: %zu", i+1 ,cloud_vector[i]->size());
@@ -346,7 +340,7 @@ private:
   }
   
   void hole_number(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector){
-        
+
     // Find centroid
     Eigen::Vector4f centroid;
     std::vector<Eigen::Vector4f> centroid_vector;
@@ -380,16 +374,16 @@ private:
     // Assign sorted_cloud_vector back to cloud_vector
     cloud_vector = sorted_cloud_vector;
 
+    std::vector<std::vector<uint8_t>> cluster_colors;
 
-    // Define colors for each cluster
-    std::vector<std::vector<uint8_t>> cluster_colors = {
-        {0, 255, 0},    // Green
-        {255, 255, 0},  // Yellow
-        {0, 0, 255},    // Blue
-        {255, 0, 0}     // Red
-    };
+    // Generate cluster colors
+    for (size_t i = 0; i < cloud_vector.size(); ++i) {
+        // Lighten the blue color based on its index
+        double brightness_factor = static_cast<double>(i) / cloud_vector.size();
+        std::vector<uint8_t> blue_color = {0, 0, static_cast<uint8_t>( 255 - brightness_factor * 230 )};
+        cluster_colors.push_back(blue_color);
+    }
 
-    int color_index = 0; // Index for selecting color from cluster_colors
 
     for (size_t i = 0; i < cloud_vector.size(); ++i) {
 
@@ -413,24 +407,6 @@ private:
 
    for (size_t i = 0; i < cloud_vector.size(); ++i) {
 
-        pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-        pcl::ModelCoefficients::Ptr coefficients_s(new pcl::ModelCoefficients);
-        pcl::SACSegmentation<pcl::PointXYZRGB> seg;
-
-        seg.setInputCloud(cloud_vector[i]);
-        seg.setOptimizeCoefficients(true);
-        seg.setModelType(pcl::SACMODEL_PLANE);
-        seg.setMaxIterations(100);
-        seg.setDistanceThreshold(0.005);
-        seg.segment(*inliers, *coefficients_s);
-
-        // Extract planar part for message
-        pcl::ExtractIndices<pcl::PointXYZRGB> extract_plane;
-        extract_plane.setInputCloud(cloud_vector[i]);
-        extract_plane.setIndices(inliers);
-        extract_plane.setNegative(true);
-        extract_plane.filter(*cloud_vector[i]);
-        
         // Create a set of planar coefficients with X=Y=0,Z=min_z
         pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients ());
         coefficients->values.resize (4);
@@ -451,8 +427,6 @@ private:
         convex_hull.reconstruct(*cloud_vector[i]);
         
     }
-
-
 
   }
 
@@ -493,7 +467,9 @@ private:
     }
   }
 
-
+  void find_center(){
+    
+  }
 
   bool debug_;
 
@@ -504,16 +480,11 @@ private:
 
   double cluster_tolerance;
 
-  //   std::shared_ptr<HolePlateSegmentation> segmentation_;
-
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr filter_cloud_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr plate_cloud_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr holes_cloud_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr hole1_cloud_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr hole2_cloud_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr hole3_cloud_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr hole4_cloud_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr colored_cloud_pub_;
 
   pcl::PassThrough<pcl::PointXYZRGB> range_filter_y;
   pcl::PassThrough<pcl::PointXYZRGB> range_filter_z;
