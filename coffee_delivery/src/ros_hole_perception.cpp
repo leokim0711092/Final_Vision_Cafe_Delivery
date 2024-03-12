@@ -112,15 +112,6 @@ public:
     segment_plate.setMaxIterations(100);
     segment_plate.setDistanceThreshold(cluster_tolerance);
 
-    //segment hole
-    segment_hole.setOptimizeCoefficients(true);
-    segment_hole.setModelType (pcl::SACMODEL_CYLINDER);
-    segment_hole.setNormalDistanceWeight(0.1);
-    segment_hole.setMethodType (pcl::SAC_RANSAC);
-    segment_hole.setMaxIterations(10000);
-    segment_hole.setRadiusLimits (0.12, 0.25);
-    segment_hole.setDistanceThreshold(0.05);
-
     // Setup TF2
     buffer_.reset(new tf2_ros::Buffer(this->get_clock()));
     listener_.reset(new tf2_ros::TransformListener(*buffer_));
@@ -228,10 +219,8 @@ private:
 
       colored_cloud_pub_->publish(store_msg);
 
-    
     }
 
-    // hole_projection(cloud_vector, hole_cloud);
     std::vector<float> xc, yc, r;
     float zc;   
     estimateCircleParams(cloud_vector, xc, yc, zc ,r);
@@ -280,41 +269,33 @@ private:
     extract_plane.setNegative(false);
     extract_plane.filter(*plate_cloud);
 
+    Eigen::Vector4f centroid;
+    pcl::compute3DCentroid(*plate_cloud, centroid);
+
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered_store(new
     pcl::PointCloud<pcl::PointXYZRGB>);
+
+    float radius = 0.125;
 
     //Remove the planar inliers, extract the rest
     extract_plane.setNegative (true);
     extract_plane.filter(*cloud_filtered_store);
-    extract_normals.setNegative (true);
-    extract_normals.setInputCloud (cloud_normals_plate);
-    extract_normals.setIndices (inliers);
-    extract_normals.filter (*cloud_normals_hole);
-
-    pcl::PointIndices::Ptr inliers_hole(new pcl::PointIndices);
-    pcl::ModelCoefficients::Ptr coefficients_hole(new pcl::ModelCoefficients);
-
-    segment_hole.setInputCloud(cloud_filtered_store);
-    segment_hole.setInputNormals(cloud_normals_hole);
-    segment_hole.segment(*inliers_hole, *coefficients_hole);
-
-    // Extract planar part for message
-    pcl::ExtractIndices<pcl::PointXYZRGB> extract_hole;
-    extract_hole.setInputCloud(cloud_filtered_store);
-    extract_hole.setIndices(inliers_hole);
-    extract_hole.setNegative(true);
-    extract_hole.filter(*hole_cloud);
     
-    pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB> outlier_filt;
-    
-    outlier_filt.setInputCloud(hole_cloud);
-    outlier_filt.setMeanK(150);
-    outlier_filt.setStddevMulThresh(2.5);
-    outlier_filt.filter(*hole_cloud);
-
+    // Create the condition for removal
+    for (size_t i = 0; i < cloud_filtered_store->size(); ++i) {
+        float dx = cloud_filtered_store->points[i].x - centroid.x();
+        float dy = cloud_filtered_store->points[i].y - centroid.y();
+        float distance = std::sqrt(dx * dx + dy * dy); // Euclidean distance from center
+        if (distance <= radius) {
+            hole_cloud->points.push_back(cloud_filtered_store->points[i]);
+        }
+    }
+   
     RCLCPP_INFO(LOGGER, "object support segmentation done processing.");
     return true;
   }
+
+
 
   void hole_seperation( pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &hole_cloud, std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector){
         
@@ -340,7 +321,7 @@ private:
     RCLCPP_INFO(LOGGER, "Cluster %zu size: %zu", i+1 ,cloud_vector[i]->size());
 
     }
-
+    RCLCPP_INFO(LOGGER, "Hole seperation done");
   }
   
   void hole_number(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector){
@@ -467,7 +448,6 @@ private:
         RCLCPP_INFO(LOGGER, "Hole %zu center is: (%f, %f, %f)", i+1, xc[i]+ 13.9 - 0.0125,  yc[i]-18.56, zc+1.032);
         RCLCPP_INFO(LOGGER, "Hole %zu center is: (%f, %f, %f)", i+1, xc[i],  yc[i], zc);
         RCLCPP_INFO(LOGGER, "Hole %zu radius is: %f", i+1, r[i]);
-
     }
   }
 
@@ -479,6 +459,25 @@ private:
     Eigen::Vector4f centroid;
     pcl::compute3DCentroid(*plate_cloud, centroid);
 
+    visualization_msgs::msg::Marker marker_center;
+    marker_center.header.frame_id = "base_link";
+    marker_center.ns = "center"; // Namespace with index
+    marker_center.type = visualization_msgs::msg::Marker::SPHERE;
+    marker_center.action = visualization_msgs::msg::Marker::ADD;
+    marker_center.scale.x = 0.01; // Adjust scale as needed
+    marker_center.scale.y = 0.01;
+    marker_center.scale.z = 0.01;
+    marker_center.id = 100;
+    marker_center.color.r = 1.0;
+    marker_center.color.g = 0.0;
+    marker_center.color.b = 0.0;
+    marker_center.color.a = 1.0;
+
+    marker_center.pose.position.x = centroid.x();
+    marker_center.pose.position.y = centroid.y();
+    marker_center.pose.position.z = centroid.z();
+
+    marker_array.markers.push_back(marker_center);
 
     for (size_t i = 0; i < xc.size(); ++i) {
         visualization_msgs::msg::Marker marker;
@@ -494,7 +493,6 @@ private:
         marker.color.g = 1.0;
         marker.color.b = 0.0;
         marker.color.a = 1.0;
-        geometry_msgs::msg::Point hole_position;
 
         marker.pose.position.x = xc[i];
         marker.pose.position.y = yc[i];
@@ -527,7 +525,6 @@ private:
   pcl::VoxelGrid<pcl::PointXYZRGB> voxel_grid_;
 
   pcl::SACSegmentationFromNormals<pcl::PointXYZRGB, pcl::Normal> segment_plate; 
-  pcl::SACSegmentationFromNormals<pcl::PointXYZRGB, pcl::Normal> segment_hole; 
 
   pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB>
           outliers_filter;
