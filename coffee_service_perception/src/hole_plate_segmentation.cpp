@@ -1,4 +1,4 @@
-#include "coffee_delivery/hole_plate_segmentation.h"
+#include "coffee_service_perception/hole_plate_segmentation.h"
 
 #include <Eigen/Eigen>
 #include <string>
@@ -10,7 +10,7 @@
 #include "pcl_conversions/pcl_conversions.h"
 
 
-namespace Coffee_Deliver {
+namespace Coffee_Service_Perception {
 
 using std::placeholders::_1;
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(coffee_delivery)
+project(coffee_service_perception)
 
 #find_package(Boost REQUIRED)
 find_package(PCL REQUIRED)
@@ -39,22 +39,22 @@ set(common_depends
   visualization_msgs
 )
 
-### Build coffee_delivery library
-add_library(coffee_delivery SHARED
+### Build coffee_service_perception library
+add_library(coffee_service_perception SHARED
 	src/hole_plate_segmentation.cpp
 )
-ament_target_dependencies(coffee_delivery ${common_depends})
-target_link_libraries(coffee_delivery ${PCL_LIBRARIES})
+ament_target_dependencies(coffee_service_perception ${common_depends})
+target_link_libraries(coffee_service_perception ${PCL_LIBRARIES})
 
 ### Build basic_hole_perception
 add_library(basic_hole_perception SHARED
   src/ros_hole_perception.cpp
 )
 ament_target_dependencies(basic_hole_perception ${common_depends})
-target_link_libraries(basic_hole_perception coffee_delivery ${PCL_LIBRARIES})
+target_link_libraries(basic_hole_perception coffee_service_perception ${PCL_LIBRARIES})
 
 rclcpp_components_register_node(basic_hole_perception
-  PLUGIN "Coffee_Deliver::BasicHolePerception"
+  PLUGIN "Coffee_Service_Perception::BasicHolePerception"
   EXECUTABLE basic_hole_perception_node
 )
 
@@ -65,7 +65,7 @@ add_library(BagToPCLConversion SHARED
 ament_target_dependencies(BagToPCLConversion ${common_depends})
 target_link_libraries(BagToPCLConversion ${PCL_LIBRARIES})
 rclcpp_components_register_node(BagToPCLConversion
-  PLUGIN "Coffee_Deliver::BagToPCLConversion"
+  PLUGIN "Coffee_Service_Perception::BagToPCLConversion"
   EXECUTABLE BagToPCLConversion_node
 )
 
@@ -82,7 +82,7 @@ install(
 
 install(
   TARGETS
-    coffee_delivery
+    coffee_service_perception
 	basic_hole_perception 
 	BagToPCLConversion
   ARCHIVE DESTINATION lib
@@ -102,7 +102,7 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME})
 
 ament_export_include_directories(include)
-ament_export_libraries(coffee_delivery)
+ament_export_libraries(coffee_service_perception)
 ament_export_dependencies(
   geometry_msgs
   grasping_msgs

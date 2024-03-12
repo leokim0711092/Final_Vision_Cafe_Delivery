@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <vector>
@@ -17,7 +18,7 @@
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 
-#include "coffee_delivery/hole_plate_segmentation.h"
+#include "coffee_service_perception/hole_plate_segmentation.h"
 
 #include "pcl/common/io.h"
 #include "pcl/common/centroid.h"
@@ -45,7 +46,7 @@
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
 
-namespace Coffee_Deliver {
+namespace Coffee_Service_Perception {
 
 static const rclcpp::Logger LOGGER = rclcpp::get_logger("Hole perception");
 
@@ -188,11 +189,20 @@ private:
       plate_cloud->header.frame_id = cloud_filtered->header.frame_id;
       hole_cloud->header.frame_id = cloud_filtered->header.frame_id;
     }
-    segment(cloud_filtered, plate_cloud, hole_cloud);
-    hole_seperation(plate_cloud, hole_cloud, cloud_vector);
+        segment(cloud_filtered, plate_cloud, hole_cloud);
+        hole_extration(plate_cloud, hole_cloud, cloud_vector);
 
-    hole_number(cloud_vector);
-    hole_projection(cloud_vector, hole_cloud);
+    if (cloud_vector.size() > 0) {
+        hole_number(cloud_vector);
+        hole_projection(cloud_vector, hole_cloud);
+        std::vector<float> xc, yc, r;
+        float zc;   
+        estimateCircleParams(cloud_vector, xc, yc, zc ,r);
+        marker(plate_cloud, xc, yc, zc ,r);
+    }else {
+        RCLCPP_INFO(LOGGER, "No hole detect to place coffee");
+
+    }
 
     if (debug_) {
       sensor_msgs::msg::PointCloud2 cloud_msg;
@@ -221,12 +231,10 @@ private:
 
     }
 
-    std::vector<float> xc, yc, r;
-    float zc;   
-    estimateCircleParams(cloud_vector, xc, yc, zc ,r);
-    marker(plate_cloud, xc, yc, zc ,r);
+
   }
 
+  //Segment the plate and hole
   bool segment(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr &cloud_input,
                 pcl::PointCloud<pcl::PointXYZRGB>::Ptr plate_cloud,
              pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud) {
@@ -296,8 +304,8 @@ private:
   }
 
 
-
-  void hole_seperation( pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &hole_cloud, std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector){
+  // Extract the hole
+  void hole_extration( pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &hole_cloud, std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector){
         
     pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> cluster_extraction;
     cluster_extraction.setInputCloud(hole_cloud);
@@ -306,24 +314,68 @@ private:
     cluster_extraction.setMaxClusterSize(10000);   // Set the maximum number of points allowed for a cluster
     std::vector<pcl::PointIndices> clusters;
     cluster_extraction.extract(clusters);
-    
-    RCLCPP_INFO(LOGGER, "Hole cloud size: %zu, Cluster amount: %zu ", hole_cloud->size(), clusters.size());
+                
+    if (debug_) {
+        RCLCPP_INFO(LOGGER, "Hole cloud size: %zu, Exstract %zu Cluster", hole_cloud->size(), clusters.size());
+    }
     
     pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices_;
     extract_indices_.setInputCloud(hole_cloud);
 
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> store_vector;
+
     for (size_t i = 0; i < clusters.size(); i++) {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-    cloud_vector.push_back(hole_cloud);
+    store_vector.push_back(hole_cloud);
 
     extract_indices_.setIndices(pcl::PointIndicesPtr(new pcl::PointIndices(clusters[i])));
-    extract_indices_.filter(*cloud_vector[i]);
-    RCLCPP_INFO(LOGGER, "Cluster %zu size: %zu", i+1 ,cloud_vector[i]->size());
-
+    extract_indices_.filter(*store_vector[i]);
     }
+
+    std::vector<size_t> index;
+
+    for(size_t i = 0; i < store_vector.size(); i++){
+
+        Eigen::Vector4f centroid_1;
+        pcl::compute3DCentroid(*store_vector[i], centroid_1);
+        
+        for(size_t j = i+1; j < store_vector.size(); j++){
+            
+            Eigen::Vector4f centroid_2;
+            pcl::compute3DCentroid(*store_vector[j], centroid_2);
+            float dx = centroid_2.x() - centroid_1.x();
+            float dy = centroid_2.y() - centroid_1.y();
+            float centroid_distance = std::sqrt(dx * dx + dy * dy); // Euclidean distance from center
+
+            if (centroid_distance <= 0.07) {
+                auto it = std::find(index.begin(), index.end(), i);
+                if (it == index.end()) index.push_back(i);
+                
+                it = std::find(index.begin(), index.end(), j);
+                if (it == index.end()) index.push_back(j);
+                break;
+            }
+        }
+    }
+    size_t count =0;
+    for(size_t i = 0; i < store_vector.size(); i++){
+        
+        auto it = std::find(index.begin(), index.end(), i);
+
+        if (it == index.end()) {       
+            cloud_vector.push_back(store_vector[i]);
+            
+            if (debug_) {
+                RCLCPP_INFO(LOGGER, "Cluster %zu size: %zu", count+1 ,cloud_vector[count]->size());
+            }
+            count++;
+        }
+    }
+
     RCLCPP_INFO(LOGGER, "Hole seperation done");
   }
   
+  // Rearrage the order of cloud in vector depending on the distance
   void hole_number(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector){
 
     // Find centroid
@@ -349,7 +401,7 @@ private:
     std::vector<std::size_t> indices(cloud_vector.size());
     std::iota(indices.begin(), indices.end(), 0); 
     std::sort(indices.begin(), indices.end(), [&](std::size_t i, std::size_t j) {
-        return distances[i] < distances[j]; // Sort based on distances
+        return distances[i] > distances[j]; // Sort based on distances
     });
 
     for (const auto& index : indices) {
@@ -370,7 +422,15 @@ private:
     }
 
 
-    for (size_t i = 0; i < cloud_vector.size(); ++i) {
+    // Color the first cloud to green
+    for (size_t i = 0; i < cloud_vector[0]->points.size(); ++i) {
+        cloud_vector[0]->points[i].r = 0;  
+        cloud_vector[0]->points[i].g = 255;  
+        cloud_vector[0]->points[i].b = 0;  
+    }
+
+    // Color the other clouds to blue
+    for (size_t i = 1; i < cloud_vector.size(); ++i) {
 
         std::vector<uint8_t> color = cluster_colors[i];
             for (auto& point : cloud_vector[i]->points) {
@@ -382,12 +442,11 @@ private:
 
   }
 
+  // Project the border of hole to 2D plane, then use convex vull to filter border out
   void hole_projection(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &hole_cloud){
         
     pcl::PointXYZRGB Min_pt, Max_pt;
     pcl::getMinMax3D(*hole_cloud, Min_pt, Max_pt);
-
-    RCLCPP_INFO(LOGGER, "Project to Min z %f", Min_pt.z);
     std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> proj_vector;
 
    for (size_t i = 0; i < cloud_vector.size(); ++i) {
@@ -451,6 +510,7 @@ private:
     }
   }
 
+  // Mark the center of find
  void marker(pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud, std::vector<float>& xc, std::vector<float>& yc, float zc, std::vector<float>& r) {
     
     // Create marker messages for each hole position
@@ -535,4 +595,4 @@ private:
 } // namespace Coffee_Deliver
 
 #include "rclcpp_components/register_node_macro.hpp"
-RCLCPP_COMPONENTS_REGISTER_NODE(Coffee_Deliver::BasicHolePerception)
+RCLCPP_COMPONENTS_REGISTER_NODE(Coffee_Service_Perception::BasicHolePerception)

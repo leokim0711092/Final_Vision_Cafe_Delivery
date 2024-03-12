@@ -1,5 +1,5 @@
-#ifndef COFFEE_DELIVERY__HOLE_PLATE_SEGMENTATION_H_
-#define COFFEE_DELIVERY__HOLE_PLATE_SEGMENTATION_H_
+#ifndef COFFEE_SERVICE_PERCEPTION__HOLE_PLATE_SEGMENTATION_H_
+#define COFFEE_SERVICE_PERCEPTION__HOLE_PLATE_SEGMENTATION_H_
 
 #include <vector>
 
@@ -14,7 +14,7 @@
 #include "pcl/filters/voxel_grid.h"
 #include "pcl/filters/passthrough.h"
 
-namespace Coffee_Deliver
+namespace Coffee_Service_Perception
 {
 
 /**

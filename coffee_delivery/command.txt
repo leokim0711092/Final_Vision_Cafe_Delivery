@@ -1,1 +1,0 @@
-1. ros2 run coffee_delivery basic_hole_perception_node --ros-args -p camera_topic:=/D415/depth/color/points

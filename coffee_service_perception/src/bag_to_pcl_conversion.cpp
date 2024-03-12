@@ -13,7 +13,7 @@
 #include <rclcpp/serialized_message.hpp>
 #include <rclcpp_components/register_node_macro.hpp> // Add this header for component registration
 
-namespace Coffee_Deliver {
+namespace Coffee_Service_Perception {
 
 using namespace std::chrono_literals;
 
@@ -66,4 +66,4 @@ private:
 } // namespace Coffee_Deliver
 
 // Register the node as a component
-RCLCPP_COMPONENTS_REGISTER_NODE(Coffee_Deliver::BagToPCLConversion)
+RCLCPP_COMPONENTS_REGISTER_NODE(Coffee_Service_Perception::BagToPCLConversion)

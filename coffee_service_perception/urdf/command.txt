@@ -1,0 +1,14 @@
+ros2 run gazebo_ros spawn_entity.py -entity cylindrical_object -file /home/user/ros2_ws/src/coffee_delivery/urdf/my_cylinder.urdf -x 13.707135 -y -18.561085 -z 0.465176
+
+13.693106, -18.580764, 0.491576)
+
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_delivery/urdf/portable_cup_2.urdf -entity coffee_1 -x 13.693259 -y -18.5778 -z 0.51 -R 0 -P 0 -Y 0
+
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_delivery/urdf/portable_cup_2.urdf -entity coffee_2 -x 13.692779 -y -18.461240 -z 0.51 -R 0 -P 0 -Y 0
+
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_delivery/urdf/portable_cup_2.urdf -entity coffee_3 -x 13.581031 -y -18.589713 -z 0.53 -R 0 -P 0 -Y 0
+
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_delivery/urdf/portable_cup_2.urdf -entity coffee_4 -x 13.582771  -y -18.459782 -z 0.51 -R 0 -P 0 -Y 0
+
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_delivery/urdf/portable_cup_2.urdf -entity coffee_table -x 14.2 -y -18.1 -z 1.1  -R 0 -P 0 -Y 0
+
