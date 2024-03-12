@@ -21,6 +21,7 @@
   <depend>sensor_msgs</depend>
   <depend>shape_msgs</depend>
   <depend>tf2_ros</depend>
+  <depend>visualization_msgs</depend>
 
   <test_depend>ament_cmake_cpplint</test_depend>
   <test_depend>ament_cmake_gtest</test_depend>

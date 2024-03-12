@@ -12,6 +12,10 @@
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "geometry_msgs/msg/point.hpp"
 #include "tf2_ros/transform_listener.h"
+#include "visualization_msgs/msg/detail/marker__struct.hpp"
+#include "visualization_msgs/msg/detail/marker_array__struct.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
 
 #include "coffee_delivery/hole_plate_segmentation.h"
 
@@ -79,10 +83,10 @@ public:
       holes_cloud_pub_ =
           this->create_publisher<sensor_msgs::msg::PointCloud2>("holes_cloud",
                                                                 qos);
-
       colored_cloud_pub_ =
           this->create_publisher<sensor_msgs::msg::PointCloud2>("color_hole_cloud",
                                                                 qos);
+      marker_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("marker", qos);
     }
 
     // Range filter for cloud
@@ -231,7 +235,7 @@ private:
     std::vector<float> xc, yc, r;
     float zc;   
     estimateCircleParams(cloud_vector, xc, yc, zc ,r);
-
+    marker(plate_cloud, xc, yc, zc ,r);
   }
 
   bool segment(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr &cloud_input,
@@ -467,8 +471,39 @@ private:
     }
   }
 
-  void find_center(){
+ void marker(pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud, std::vector<float>& xc, std::vector<float>& yc, float zc, std::vector<float>& r) {
     
+    // Create marker messages for each hole position
+    visualization_msgs::msg::MarkerArray marker_array;
+    // Find centroid
+    Eigen::Vector4f centroid;
+    pcl::compute3DCentroid(*plate_cloud, centroid);
+
+
+    for (size_t i = 0; i < xc.size(); ++i) {
+        visualization_msgs::msg::Marker marker;
+        marker.header.frame_id = "base_link";
+        marker.ns = "holes_" + std::to_string(i); // Namespace with index
+        marker.type = visualization_msgs::msg::Marker::SPHERE;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+        marker.scale.x = 0.01; // Adjust scale as needed
+        marker.scale.y = 0.01;
+        marker.scale.z = 0.01;
+        marker.id = i;
+        marker.color.r = 1.0;
+        marker.color.g = 1.0;
+        marker.color.b = 0.0;
+        marker.color.a = 1.0;
+        geometry_msgs::msg::Point hole_position;
+
+        marker.pose.position.x = xc[i];
+        marker.pose.position.y = yc[i];
+        marker.pose.position.z = centroid.z();
+
+        marker_array.markers.push_back(marker);
+    }
+       marker_pub_->publish(marker_array);
+
   }
 
   bool debug_;
@@ -485,6 +520,7 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr plate_cloud_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr holes_cloud_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr colored_cloud_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
 
   pcl::PassThrough<pcl::PointXYZRGB> range_filter_y;
   pcl::PassThrough<pcl::PointXYZRGB> range_filter_z;

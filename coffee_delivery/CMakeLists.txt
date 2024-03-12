@@ -16,7 +16,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(shape_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(rosbag2_cpp REQUIRED)
-
+find_package(visualization_msgs REQUIRED)
 
 include_directories(
   include
@@ -36,11 +36,12 @@ set(common_depends
   shape_msgs
   tf2_ros
   rosbag2_cpp
+  visualization_msgs
 )
 
 ### Build coffee_delivery library
 add_library(coffee_delivery SHARED
-	src/pcl_hole_perception.cpp
+	src/hole_plate_segmentation.cpp
 )
 ament_target_dependencies(coffee_delivery ${common_depends})
 target_link_libraries(coffee_delivery ${PCL_LIBRARIES})
@@ -51,6 +52,7 @@ add_library(basic_hole_perception SHARED
 )
 ament_target_dependencies(basic_hole_perception ${common_depends})
 target_link_libraries(basic_hole_perception coffee_delivery ${PCL_LIBRARIES})
+
 rclcpp_components_register_node(basic_hole_perception
   PLUGIN "Coffee_Deliver::BasicHolePerception"
   EXECUTABLE basic_hole_perception_node
@@ -88,6 +90,13 @@ install(
   RUNTIME DESTINATION lib/${PACKAGE_NAME}
 )
 
+install(DIRECTORY
+  launch
+  models
+
+  DESTINATION share/${PROJECT_NAME}
+)
+
 install(TARGETS
   pcl_hole_perception
   DESTINATION lib/${PROJECT_NAME})
@@ -105,5 +114,6 @@ ament_export_dependencies(
   sensor_msgs
   shape_msgs
   tf2_ros
+  visualization_msgs
 )
 ament_package()
