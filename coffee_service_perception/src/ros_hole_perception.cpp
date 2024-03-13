@@ -311,7 +311,7 @@ private:
     cluster_extraction.setInputCloud(hole_cloud);
     cluster_extraction.setClusterTolerance(0.01); // Set the cluster tolerance (max. distance between points in a cluster)
     cluster_extraction.setMinClusterSize(100);    // Set the minimum number of points required for a cluster
-    cluster_extraction.setMaxClusterSize(10000);   // Set the maximum number of points allowed for a cluster
+    cluster_extraction.setMaxClusterSize(1000);   // Set the maximum number of points allowed for a cluster
     std::vector<pcl::PointIndices> clusters;
     cluster_extraction.extract(clusters);
                 
@@ -332,13 +332,16 @@ private:
     extract_indices_.filter(*store_vector[i]);
     }
 
-    std::vector<size_t> index;
+    std::vector<std::vector<size_t>> groups;
 
+    // Remove the coffee cup
     for(size_t i = 0; i < store_vector.size(); i++){
 
         Eigen::Vector4f centroid_1;
         pcl::compute3DCentroid(*store_vector[i], centroid_1);
         
+        std::vector<size_t> index;
+
         for(size_t j = i+1; j < store_vector.size(); j++){
             
             Eigen::Vector4f centroid_2;
@@ -353,16 +356,42 @@ private:
                 
                 it = std::find(index.begin(), index.end(), j);
                 if (it == index.end()) index.push_back(j);
+            }
+        }
+        if (index.size() > 0) {
+            groups.push_back(index);
+        }
+    }
+    size_t count = 0;
+
+    for (const auto& group : groups) {
+
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+        for(size_t i = 0; i < group.size(); i++){
+            *cloud += *store_vector[group[i]];
+        }
+        cloud_vector.push_back(cloud);
+        RCLCPP_INFO(LOGGER, "Cluster %zu size: %zu", count+1 ,cloud_vector[count]->size());
+        count++;
+    }
+
+    
+    for(size_t i = 0; i < store_vector.size(); i++){
+        
+        bool find = false;
+
+        for (const auto& index : groups) {
+
+        auto it = std::find(index.begin(), index.end(), i);
+
+            if (it != index.end()) {       
+                find = true;
                 break;
             }
         }
-    }
-    size_t count =0;
-    for(size_t i = 0; i < store_vector.size(); i++){
-        
-        auto it = std::find(index.begin(), index.end(), i);
 
-        if (it == index.end()) {       
+        if (!find) {       
             cloud_vector.push_back(store_vector[i]);
             
             if (debug_) {
@@ -411,34 +440,34 @@ private:
     // Assign sorted_cloud_vector back to cloud_vector
     cloud_vector = sorted_cloud_vector;
 
-    std::vector<std::vector<uint8_t>> cluster_colors;
+    // std::vector<std::vector<uint8_t>> cluster_colors;
 
-    // Generate cluster colors
-    for (size_t i = 0; i < cloud_vector.size(); ++i) {
-        // Lighten the blue color based on its index
-        double brightness_factor = static_cast<double>(i) / cloud_vector.size();
-        std::vector<uint8_t> blue_color = {0, 0, static_cast<uint8_t>( 255 - brightness_factor * 230 )};
-        cluster_colors.push_back(blue_color);
-    }
+    // // Generate cluster colors
+    // for (size_t i = 0; i < cloud_vector.size(); ++i) {
+    //     // Lighten the blue color based on its index
+    //     double brightness_factor = static_cast<double>(i) / cloud_vector.size();
+    //     std::vector<uint8_t> blue_color = {0, 0, static_cast<uint8_t>( 255 - brightness_factor * 230 )};
+    //     cluster_colors.push_back(blue_color);
+    // }
 
 
-    // Color the first cloud to green
-    for (size_t i = 0; i < cloud_vector[0]->points.size(); ++i) {
-        cloud_vector[0]->points[i].r = 0;  
-        cloud_vector[0]->points[i].g = 255;  
-        cloud_vector[0]->points[i].b = 0;  
-    }
+    // // Color the first cloud to green
+    // for (size_t i = 0; i < cloud_vector[0]->points.size(); ++i) {
+    //     cloud_vector[0]->points[i].r = 0;  
+    //     cloud_vector[0]->points[i].g = 255;  
+    //     cloud_vector[0]->points[i].b = 0;  
+    // }
 
-    // Color the other clouds to blue
-    for (size_t i = 1; i < cloud_vector.size(); ++i) {
+    // // Color the other clouds to blue
+    // for (size_t i = 1; i < cloud_vector.size(); ++i) {
 
-        std::vector<uint8_t> color = cluster_colors[i];
-            for (auto& point : cloud_vector[i]->points) {
-                    point.r = color[0];
-                    point.g = color[1];
-                    point.b = color[2];
-                }
-    }
+    //     std::vector<uint8_t> color = cluster_colors[i];
+    //         for (auto& point : cloud_vector[i]->points) {
+    //                 point.r = color[0];
+    //                 point.g = color[1];
+    //                 point.b = color[2];
+    //             }
+    // }
 
   }
 
@@ -480,7 +509,9 @@ private:
     pcl::PointXYZRGB min_pt, max_pt;
     pcl::getMinMax3D(*cloud_vector[0], min_pt, max_pt);
     zc = (2*min_pt.z + 0.14)/2.0;
-
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> store_vector;
+    
+    size_t count=0;
     for (size_t i = 0; i < cloud_vector.size(); ++i) {
         // Number of points
         int N = cloud_vector[i]->size();
@@ -498,16 +529,55 @@ private:
         // Least square approximation
         Eigen::Vector3d X = (A.transpose() * A).ldlt().solve(A.transpose() * B);
 
-        // Calculate circle parameters
-        xc.push_back(X(0) / 2);
-        yc.push_back(X(1) / 2);
-        r.push_back(sqrt(4 * X(2) + X(0) * X(0) + X(1) * X(1)) / 2);
+        float radius = sqrt(4 * X(2) + X(0) * X(0) + X(1) * X(1)) / 2;
+        if (radius<= 0.0365 && radius >= 0.0335 ) {
+            // Calculate circle parameters
+            xc.push_back(X(0) / 2);
+            yc.push_back(X(1) / 2);
+            r.push_back(sqrt(4 * X(2) + X(0) * X(0) + X(1) * X(1)) / 2);
 
-        // 1.25 is coffee bottom radius. The dae pose is located at the x border and y center, so the x needs to minus radius and the y,z  don't need
-        RCLCPP_INFO(LOGGER, "Hole %zu center is: (%f, %f, %f)", i+1, xc[i]+ 13.9 - 0.0125,  yc[i]-18.56, zc+1.032);
-        RCLCPP_INFO(LOGGER, "Hole %zu center is: (%f, %f, %f)", i+1, xc[i],  yc[i], zc);
-        RCLCPP_INFO(LOGGER, "Hole %zu radius is: %f", i+1, r[i]);
+            // 1.25 is coffee bottom radius. The dae pose is located at the x border and y center, so the x needs to minus radius and the y,z  don't need
+            // RCLCPP_INFO(LOGGER, "Hole %zu center is: (%f, %f, %f)", i+1, xc[i]+ 13.9 - 0.0125,  yc[i]-18.56, zc+1.032); // for cup with cover
+            RCLCPP_INFO(LOGGER, "Hole %zu center is: (%f, %f, %f)", count+1, xc[count]+ 13.9 - 0.05,  yc[count]-18.56 + 0.04, zc+1.032); // for cup without cover, this value is related to the inertia pose we set
+
+            RCLCPP_INFO(LOGGER, "Hole %zu center is: (%f, %f, %f)", count+1, xc[count],  yc[count], zc);
+            RCLCPP_INFO(LOGGER, "Hole %zu radius is: %f", count+1, r[count]);
+            count++;
+            store_vector.push_back(cloud_vector[i]);
+        }
+
     }
+
+    cloud_vector = store_vector;
+    std::vector<std::vector<uint8_t>> cluster_colors;
+
+    // Generate cluster colors
+    for (size_t i = 0; i < cloud_vector.size(); ++i) {
+        // Lighten the blue color based on its index
+        double brightness_factor = static_cast<double>(i) / cloud_vector.size();
+        std::vector<uint8_t> blue_color = {0, 0, static_cast<uint8_t>( 255 - brightness_factor * 230 )};
+        cluster_colors.push_back(blue_color);
+    }
+
+
+    // Color the first cloud to green
+    for (size_t i = 0; i < cloud_vector[0]->points.size(); ++i) {
+        cloud_vector[0]->points[i].r = 0;  
+        cloud_vector[0]->points[i].g = 255;  
+        cloud_vector[0]->points[i].b = 0;  
+    }
+
+    // Color the other clouds to blue
+    for (size_t i = 1; i < cloud_vector.size(); ++i) {
+
+        std::vector<uint8_t> color = cluster_colors[i];
+            for (auto& point : cloud_vector[i]->points) {
+                    point.r = color[0];
+                    point.g = color[1];
+                    point.b = color[2];
+                }
+    }
+
   }
 
   // Mark the center of find
