@@ -18,9 +18,9 @@ def generate_launch_description():
 
     # MoveItCpp demo executable
     moveit_cpp_node = Node(
-        name="pick_and_place",
+        name="pick_and_place_cup",
         package="moveit2_scripts",
-        executable="pick_and_place",
+        executable="pick_and_place_cup",
         output="screen",
         parameters=[
             os.path.join(
@@ -40,3 +40,5 @@ def generate_launch_description():
     return LaunchDescription(
         [moveit_cpp_node],  
     )
+
+

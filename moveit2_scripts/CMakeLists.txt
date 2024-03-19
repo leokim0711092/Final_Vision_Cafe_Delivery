@@ -16,6 +16,22 @@ find_package(interactive_markers REQUIRED)
 find_package(geometric_shapes REQUIRED)
 find_package(control_msgs REQUIRED)
 find_package(moveit_msgs REQUIRED)
+find_package(tf2_eigen REQUIRED)
+
+
+set(common_depends
+	rclcpp
+	rclcpp_action
+	moveit_core
+	moveit_ros_planning_interface
+	interactive_markers
+	moveit_ros_planning
+	control_msgs
+	tf2_eigen
+
+)
+
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -44,6 +60,14 @@ ament_target_dependencies(pick_and_place
 	moveit_ros_planning
 	control_msgs)
 
+
+add_executable(pick_and_place_cup
+    src/pick_and_place_cup.cpp)
+target_include_directories(pick_and_place_cup
+    PUBLIC include)
+
+ament_target_dependencies(pick_and_place_cup ${common_depends})
+
 add_executable(scene
     src/scene.cpp)
 target_include_directories(scene
@@ -59,8 +83,10 @@ ament_target_dependencies(scene
 	moveit_ros_planning
 	control_msgs)
 
-# Install the executable
+# Install the executable 	               
+
 install(TARGETS 
+ 	pick_and_place_cup
 	pick_and_place
 	scene
     DESTINATION lib/${PROJECT_NAME}
@@ -69,6 +95,7 @@ install(TARGETS
 # Install the launch file
 install(DIRECTORY 
 	launch
+	config
     DESTINATION share/${PROJECT_NAME}
 )
 
