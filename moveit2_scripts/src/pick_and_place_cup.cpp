@@ -1,11 +1,23 @@
-#include <cstddef>
+#include "rclcpp/logging.hpp"
 #include <moveit/move_group_interface/move_group_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
+#include <tf2_eigen/tf2_eigen.hpp>
 
 #include <moveit_msgs/msg/display_robot_state.hpp>
 #include <moveit_msgs/msg/display_trajectory.hpp>
 
-static const rclcpp::Logger LOGGER = rclcpp::get_logger("move_group_demo");
+static const rclcpp::Logger LOGGER = rclcpp::get_logger("Grasp coffee");
+
+Eigen::Isometry3d vectorToEigen(const std::vector<double>& values){
+    return Eigen::Translation3d(values[0], values[1], values[2]) *
+        Eigen::AngleAxisd(values[3], Eigen::Vector3d::UnitX()) *
+        Eigen::AngleAxisd(values[4], Eigen::Vector3d::UnitY()) *
+        Eigen::AngleAxisd(values[5], Eigen::Vector3d::UnitZ());
+}
+
+geometry_msgs::msg::Pose vectorToPose(const std::vector<double>& values){
+    return tf2::toMsg(vectorToEigen(values));
+}
 
 int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
@@ -20,7 +32,6 @@ int main(int argc, char **argv) {
   std::thread([&executor]() { executor.spin(); }).detach();
 
   static const std::string PLANNING_GROUP_ARM = "ur_manipulator";
-  
   static const std::string PLANNING_GROUP_GRIPPER = "gripper";
 
   moveit::planning_interface::MoveGroupInterface move_group_arm(
@@ -35,7 +46,7 @@ int main(int argc, char **argv) {
       move_group_gripper.getCurrentState()->getJointModelGroup(
           PLANNING_GROUP_GRIPPER);
 
-/****************************************************
+  /****************************************************
     *               Get current state                  *
     ***************************************************/
   moveit::core::RobotStatePtr current_state_arm = 
@@ -91,6 +102,47 @@ int main(int argc, char **argv) {
   double hole_pose_y = Hole_pose[1];
   double hole_pose_z = Hole_pose[2];
 
+
+
+/****************************************************
+    *                Creat cube collision              *
+    ***************************************************/
+  auto const collision_object_cube = [frame_id =
+                                          move_group_arm.getPlanningFrame()] {
+    moveit_msgs::msg::CollisionObject collision_object;
+    collision_object.header.frame_id = frame_id;
+    collision_object.id = "coffee";
+    shape_msgs::msg::SolidPrimitive primitive;
+
+    // Define the size of the box in meters
+    primitive.type = primitive.CYLINDER;
+    primitive.dimensions.resize(3);
+    primitive.dimensions[primitive.CYLINDER_HEIGHT] = 0.08;
+    primitive.dimensions[primitive.CYLINDER_RADIUS] = 0.035;
+
+
+    // Define the pose of the box (relative to the frame_id)
+    geometry_msgs::msg::Pose box_pose;
+    box_pose.orientation.w = 1.0; // We can leave out the x, y, and z components of the quaternion since they are initialized to 0
+    box_pose.position.x = 0.3;
+    box_pose.position.y = 0.33;
+    box_pose.position.z = 0.05;
+
+    collision_object.primitives.push_back(primitive);
+    collision_object.primitive_poses.push_back(box_pose);
+    collision_object.operation = collision_object.ADD;
+
+    return collision_object;
+  }();
+
+/****************************************************
+    *      Add the collision object to the scene       *
+    ***************************************************/
+  moveit::planning_interface::PlanningSceneInterface coffee;
+
+  coffee.applyCollisionObject(collision_object_cube);
+
+  RCLCPP_INFO(LOGGER, "Create Collision");
 
 /****************************************************
     *                Close gripper                     *
@@ -159,8 +211,7 @@ int main(int argc, char **argv) {
 
   move_group_gripper.execute(my_plan_gripper);
 
-
-  /****************************************************
+/****************************************************
     *           Approach to object waypoint            *
     ***************************************************/
   RCLCPP_INFO(LOGGER, "Approach to object!");
@@ -181,7 +232,28 @@ int main(int argc, char **argv) {
 
   move_group_arm.execute(trajectory_approach);
   
+/*******************************************************
+   *  Attached Collision Object to the End Effector Link *
+   ******************************************************/
   RCLCPP_INFO(LOGGER, "Attached Collision Object to the End Effector Link");
+
+  static const std::string END_EFFECTOR_LINK = move_group_arm.getEndEffectorLink();
+
+  moveit_msgs::msg::AttachedCollisionObject attached_object;  // attach object
+  attached_object.link_name = END_EFFECTOR_LINK;
+  attached_object.object = collision_object_cube;  
+  attached_object.object.operation = moveit_msgs::msg::CollisionObject::ADD;
+
+  attached_object.touch_links = std::vector<std::string>{"rg2_gripper_left_finger", "rg2_gripper_left_thumb", "rg2_gripper_right_finger", "rg2_gripper_right_thumb"}; // Specify touch links
+
+  moveit::planning_interface::PlanningSceneInterface planning_scene_interface; //add the attached object to the scene
+  
+  bool result = planning_scene_interface.applyAttachedCollisionObject(attached_object);
+    if (!result)
+  {
+    RCLCPP_ERROR(LOGGER, "Failed to add AttachCollisionObject: %s", attached_object.object.id.c_str());
+    return false;
+  }
 
 /****************************************************
     *                 Take coffee                      *
@@ -234,8 +306,6 @@ int main(int argc, char **argv) {
 
   hole_waypoints.push_back(target_pose2);
 
-  static const std::string END_EFFECTOR_LINK = move_group_arm.getEndEffectorLink();
-
   moveit_msgs::msg::OrientationConstraint ocm; // Orientation constraint set
   ocm.link_name = END_EFFECTOR_LINK; // Replace with your actual end-effector link name
   ocm.header.frame_id = "base_link"; // Replace with your reference frame
@@ -257,27 +327,6 @@ int main(int argc, char **argv) {
       hole_waypoints, eef_step, jump_threshold, hole_trajectory_approach, test_constraints);
 
   move_group_arm.execute(hole_trajectory_approach);
-
-
-/****************************************************
-    *             Z pose to approach hole              *
-    ***************************************************/
-
-  RCLCPP_INFO(LOGGER, "Z pose to approach hole ");
-
-  std::vector<geometry_msgs::msg::Pose> z_approach_waypoints;
-  target_pose2.position.z -= z_approach/2.0;
-  z_approach_waypoints.push_back(target_pose2);
-
-  target_pose2.position.z -= z_approach/2.0;
-  z_approach_waypoints.push_back(target_pose2);
-
-  moveit_msgs::msg::RobotTrajectory trajectory_z_approach;
-
-  fraction = move_group_arm.computeCartesianPath(
-      z_approach_waypoints, eef_step, jump_threshold, trajectory_z_approach);
-
-  move_group_arm.execute(trajectory_z_approach);
 
 
 /****************************************************
@@ -303,6 +352,27 @@ int main(int argc, char **argv) {
     move_group_arm.execute(desire_trajectory_approach);
 
   }
+
+/****************************************************
+    *             Z pose to approach hole              *
+    ***************************************************/
+
+  RCLCPP_INFO(LOGGER, "Z pose to approach hole ");
+
+  std::vector<geometry_msgs::msg::Pose> z_approach_waypoints;
+  target_pose2.position.z -= z_approach/2.0;
+  z_approach_waypoints.push_back(target_pose2);
+
+  target_pose2.position.z -= z_approach/2.0;
+  z_approach_waypoints.push_back(target_pose2);
+
+  moveit_msgs::msg::RobotTrajectory trajectory_z_approach;
+
+  fraction = move_group_arm.computeCartesianPath(
+      z_approach_waypoints, eef_step, jump_threshold, trajectory_z_approach);
+
+  move_group_arm.execute(trajectory_z_approach);
+
 
 /****************************************************
     *                Open gripper                     *
@@ -334,6 +404,23 @@ int main(int argc, char **argv) {
   }
 
 /****************************************************
+    *                Detach object                     *
+    ***************************************************/
+  RCLCPP_INFO(LOGGER, "Detach Collision Object ");
+
+  moveit_msgs::msg::AttachedCollisionObject detach_object;
+  detach_object.link_name = END_EFFECTOR_LINK;
+  detach_object.object.id = collision_object_cube.id;
+  detach_object.object.operation = moveit_msgs::msg::CollisionObject::REMOVE;
+
+  result = planning_scene_interface.applyAttachedCollisionObject(detach_object);
+  if (!result)
+  {
+    RCLCPP_ERROR(LOGGER, "Failed to detach AttachCollisionObject object: %s", detach_object.object.id.c_str());
+    return false;
+  }
+
+/****************************************************
     *               Z axis Retrieve                    *
     ***************************************************/
   RCLCPP_INFO(LOGGER, "Z Retrieve from hole position");
@@ -350,10 +437,8 @@ int main(int argc, char **argv) {
   fraction = move_group_arm.computeCartesianPath(
       z_retrieve_waypoints, eef_step, jump_threshold, trajectory_z_retrieve);
 
-  move_group_arm.execute(trajectory_z_retrieve);
+  move_group_arm.execute(trajectory_z_retrieve);  
 
-
-  
   rclcpp::shutdown();
   return 0;
 }

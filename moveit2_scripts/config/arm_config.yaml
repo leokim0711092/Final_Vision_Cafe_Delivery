@@ -11,9 +11,9 @@
 
     # Hole
     # intial_pose: [-0.313, 0.112646, -0.520424]
-    intial_pose: [-0.371, 0.115297, -0.520424]
+    intial_pose: [-0.372917, 0.114426, 0.511557]
 
-    perception_pose: [-0.2622981, -0.0157, -0.520434]
+    perception_pose: [-0.263253, 0.110580, 0.511557]
 
     # Arm z pose
     z_approach: 0.62

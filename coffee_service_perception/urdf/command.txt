@@ -10,10 +10,15 @@ ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_
 
 ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup_2.urdf -entity coffee_4 -x 13.584559  -y -18.445168 -z 0.52 -R 0 -P 0 -Y 0
 
-ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup_2.urdf -entity coffee_table -x 14.2 -y -18.1 -z 1.1  -R 0 -P 0 -Y 0
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup_2.urdf -entity coffee_cup -x 14.2 -y -18.1 -z 1.1  -R 0 -P 0 -Y 0
 
 ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_1 -x 13.693259 -y -18.5778 -z 0.52 -R 0 -P 0 -Y 0
 
-ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_1 -x 14.2 -y -18.2 -z 1.025 -R 1.57 -P 0 -Y 0
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_1 -x 14.16 -y -18.195 -z 1.025 -R 1.57 -P 0 -Y 0
 
-ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_1 -x 13.546384-y -18.410699 -z 0.48 -R 1.57 -P 0 -Y 0
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_1 -x 13.546480092 -y -18.409910 -z 0.48 -R 1.57 -P 0 -Y 0
+
+
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_1 -x 14.16 -y -18.19 -z 1.025 -R 1.57 -P 0 -Y 0
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_2 -x 14.16 -y -18.19 -z 1.025 -R 1.57 -P 0 -Y 0
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_3 -x 14.16 -y -18.19 -z 1.025 -R 1.57 -P 0 -Y 0
