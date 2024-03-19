@@ -28,14 +28,23 @@
         <joint name="wrist_2_joint" value="-1.55"/>
         <joint name="wrist_3_joint" value="0"/>
     </group_state>
+
+    <group_state name="pregrasp" group="ur_manipulator">
+        <joint name="elbow_joint" value="-0.4"/>
+        <joint name="shoulder_lift_joint" value="-2.25"/>
+        <joint name="shoulder_pan_joint" value="-2.01"/>
+        <joint name="wrist_1_joint" value="-2.06"/>
+        <joint name="wrist_2_joint" value="1.57"/>
+        <joint name="wrist_3_joint" value="-0.44"/>
+    </group_state>
     <group_state name="open" group="gripper">
-        <joint name="rg2_gripper_finger_left_joint" value="0.2596"/>
+        <joint name="rg2_gripper_finger_left_joint" value="0.40"/>
     </group_state>
     <group_state name="hold" group="gripper">
-        <joint name="rg2_gripper_finger_left_joint" value="-0.2552"/>
+        <joint name="rg2_gripper_finger_left_joint" value="-0.05"/>
     </group_state>
     <group_state name="close" group="gripper">
-        <joint name="rg2_gripper_finger_left_joint" value="-0.68"/>
+        <joint name="rg2_gripper_finger_left_joint" value="-0.52"/>
     </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="hand_ee" parent_link="wrist_3_link" group="gripper" parent_group="ur_manipulator"/>
