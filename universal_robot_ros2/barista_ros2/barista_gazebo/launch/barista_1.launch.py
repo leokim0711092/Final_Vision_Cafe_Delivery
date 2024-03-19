@@ -9,11 +9,13 @@ from launch.actions import DeclareLaunchArgument
 from launch.actions import IncludeLaunchDescription
 from launch import LaunchDescription
 from launch.actions import OpaqueFunction
+from launch_ros.actions import Node
 
 
 def gen_robot_info():
 
-    pose_1 = [13.64, -18.51, 1.57]
+    # pose_1 = [13.64, -18.51, 1.57]
+    pose_1 = [13.58, -18.51, 1.57]
 
     robot_name = "barista_1"
     x_pos = pose_1[0]
@@ -49,7 +51,16 @@ def launch_setup(context, *args, **kwargs):
                 'entity_name': robot['name']
             }.items()))
 
-    return [ld]
+    static_tf_pub = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='static_transform_publisher_turtle_odom_1',
+        output='screen',
+        emulate_tty=True,
+        arguments=['-0.26', '0.05', '-0.54', '0', '0', '1.57', 'world', 'barista_1/odom']
+    )
+
+    return [ld,static_tf_pub]
 
 
 def generate_launch_description():

@@ -46,6 +46,7 @@ joint_state_broadcaster:
         - wrist_2_joint
         - wrist_3_joint
         - rg2_gripper_finger_left_joint
+
       interfaces:
          - position
          - velocity
