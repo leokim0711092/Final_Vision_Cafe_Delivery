@@ -103,7 +103,8 @@
    </xacro:rg2_gripper>
 
    <xacro:sensor_r430 prefix="wrist_rgbd" parent="base_link" >
-       <origin xyz="-0.2 -0.3 0.2" rpy="0 ${pi/3} ${pi/2}"/>
+       <!-- <origin xyz="-0.2 -0.3 0.2" rpy="0 ${pi/3} ${pi/2}"/> -->
+       <origin xyz="-0.25 -0.3 0.2" rpy="0 ${pi/3} ${pi/2}"/>
    </xacro:sensor_r430>
 
     <xacro:sensor_r430 prefix="camera" parent="base_link" >

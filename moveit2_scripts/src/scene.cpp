@@ -254,7 +254,7 @@ auto const collision_object_plate = [frame_id =
     box_pose.orientation.w =
         1.0; // We can leave out the x, y, and z components of the quaternion
              // since they are initialized to 0
-    box_pose.position.x = -0.32;
+    box_pose.position.x = -0.38;
     box_pose.position.y = 0.05;
     box_pose.position.z = -0.66;
 

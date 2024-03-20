@@ -60,6 +60,21 @@ ament_target_dependencies(pick_and_place
 	moveit_ros_planning
 	control_msgs)
 
+add_executable(pick_and_place_real
+    src/pick_and_place_real.cpp)
+target_include_directories(pick_and_place_real
+    PUBLIC include)
+
+ament_target_dependencies(pick_and_place_real
+    ament_cmake
+	rclcpp
+	rclcpp_action
+	moveit_core
+	moveit_ros_planning_interface
+	interactive_markers
+	moveit_ros_planning
+	control_msgs)
+
 
 add_executable(pick_and_place_cup
     src/pick_and_place_cup.cpp)
@@ -67,6 +82,15 @@ target_include_directories(pick_and_place_cup
     PUBLIC include)
 
 ament_target_dependencies(pick_and_place_cup ${common_depends})
+
+
+add_executable(pick_and_place_real_cup
+    src/pick_and_place_cup_real.cpp)
+target_include_directories(pick_and_place_real_cup
+    PUBLIC include)
+
+ament_target_dependencies(pick_and_place_real_cup ${common_depends})
+
 
 add_executable(scene
     src/scene.cpp)
@@ -88,6 +112,8 @@ ament_target_dependencies(scene
 install(TARGETS 
  	pick_and_place_cup
 	pick_and_place
+	pick_and_place_real
+	pick_and_place_real_cup
 	scene
     DESTINATION lib/${PROJECT_NAME}
 )
