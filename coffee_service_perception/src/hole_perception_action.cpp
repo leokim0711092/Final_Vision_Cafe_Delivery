@@ -1,75 +1,30 @@
-#include <cstddef>
-#include <memory>
-#include <string>
-#include <vector>
-#include <Eigen/Eigen>
-
+#include "coffee_service_perception/hole_perception_action.h"
 #include "geometry_msgs/msg/detail/point__struct.hpp"
-#include "geometry_msgs/msg/detail/pose__struct.hpp"
-#include "pcl_conversions/pcl_conversions.h"
-#include "rclcpp/logging.hpp"
-#include "rclcpp/rclcpp.hpp"
-#include "rclcpp_action/rclcpp_action.hpp"
-#include "sensor_msgs/msg/point_cloud2.hpp"
-#include "geometry_msgs/msg/point.hpp"
-#include "tf2_ros/transform_listener.h"
-#include "visualization_msgs/msg/detail/marker__struct.hpp"
-#include "visualization_msgs/msg/detail/marker_array__struct.hpp"
-#include "visualization_msgs/msg/marker.hpp"
-#include "visualization_msgs/msg/marker_array.hpp"
-
-#include "pcl/common/io.h"
-#include "pcl/common/centroid.h"
-#include <pcl/common/common.h>
-
-#include "pcl/filters/passthrough.h"
-#include "pcl/filters/voxel_grid.h"
-#include <pcl/filters/statistical_outlier_removal.h>
-#include <pcl/filters/voxel_grid.h>
-#include "pcl/filters/extract_indices.h"
-#include <pcl/filters/project_inliers.h>
-
-#include <pcl/point_cloud.h> 
-#include "pcl/point_types.h"
-#include "pcl_ros/transforms.hpp"
-
-#include "pcl/segmentation/extract_clusters.h"
-#include "pcl/segmentation/sac_segmentation.h"
-
-#include <pcl/surface/convex_hull.h>
-#include <pcl/ModelCoefficients.h>
-
-#include <pcl/features/normal_3d.h>
-#include <pcl/sample_consensus/method_types.h>
-#include <pcl/sample_consensus/model_types.h>
+#include <cstddef>
 
 namespace Coffee_Service_Perception {
 
-static const rclcpp::Logger LOGGER = rclcpp::get_logger("Hole perception");
+static const rclcpp::Logger LOGGER = rclcpp::get_logger("Hole perception action");
 
 using std::placeholders::_1;
 using std::placeholders::_2;
 
-class BasicHolePerception : public rclcpp::Node {
-
-public:
-  explicit BasicHolePerception(const rclcpp::NodeOptions &options)
-      : rclcpp::Node("basic_hole_perception", options), debug_(true) {
+HolePerceptionAction::HolePerceptionAction(const rclcpp::NodeOptions &options)
+      : rclcpp::Node("hole_perception_action", options), debug_(true), find_objects_(false){
+    
     // Store clock
     clock_ = this->get_clock();
 
     // use_debug: enable/disable output of a cloud containing object points
     debug_ = this->declare_parameter<bool>("debug_topics", true);
 
-    loop_set = this->declare_parameter<int>("loop_set", 10);
-    count_callback = 0;
     // frame_id: frame to transform cloud to (should be XY horizontal)
     world_frame_ =
         this->declare_parameter<std::string>("frame_id", "base_link");
 
     camera_topic_ =
         this->declare_parameter<std::string>("camera_topic", "/wrist_rgbd_depth_sensor/points");
-  // cluster_tolerance: minimum separation distance of two objects
+
     cluster_tolerance = this->declare_parameter<double>("cluster_tolerance", 0.01);
 
     // Publish debugging views
@@ -130,18 +85,86 @@ public:
 
     cloud_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
         camera_topic_ , points_qos,
-        std::bind(&BasicHolePerception::cloud_callback, this, _1));
+        std::bind(&HolePerceptionAction::cloud_callback, this, _1));
 
     RCLCPP_INFO(LOGGER, "cafe_delivery_perception initialized");
-    plate_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZRGB>>();
-    hole_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZRGB>>();
 
+    // Setup actionlib server
+    server_ = rclcpp_action::create_server<FindHolesAction>(
+        this->get_node_base_interface(), this->get_node_clock_interface(),
+        this->get_node_logging_interface(),
+        this->get_node_waitables_interface(), "find_hole",
+        std::bind(&HolePerceptionAction::handle_goal, this, _1, _2),
+        std::bind(&HolePerceptionAction::handle_cancel, this, _1),
+        std::bind(&HolePerceptionAction::handle_accepted, this, _1));
+
+}
+
+rclcpp_action::GoalResponse HolePerceptionAction::handle_goal(
+      const rclcpp_action::GoalUUID &uuid,
+      std::shared_ptr<const FindHolesAction::Goal> goal_handle) {
+    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
   }
 
-private:
-  void cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
-    count_callback++;
+  rclcpp_action::CancelResponse HolePerceptionAction::handle_cancel(const std::shared_ptr<FindHoleActionGoal> goal_handle) {
+    return rclcpp_action::CancelResponse::ACCEPT;
+  }
 
+  void HolePerceptionAction::handle_accepted(const std::shared_ptr<FindHoleActionGoal> goal_handle) {
+
+    // Break off a thread
+    std::thread{std::bind(&HolePerceptionAction::execute, this, _1), goal_handle}.detach();
+  }
+
+  void HolePerceptionAction::execute(const std::shared_ptr<FindHoleActionGoal> goal_handle) {
+    
+    auto result = std::make_shared<FindHolesAction::Result>();
+    auto feedback = std::make_shared<FindHolesAction::Feedback>();
+
+    const auto goal = goal_handle->get_goal();
+
+    if (goal_handle->is_canceling()) {
+        goal_handle->canceled(result);
+        RCLCPP_INFO(this->get_logger(), "Goal canceled");
+        return;
+    }
+
+    // Get objects
+    find_objects_ = goal->find_hole;
+    rclcpp::Time t = clock_->now();
+    while (find_objects_ == true) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+      if (clock_->now() - t > rclcpp::Duration::from_seconds(3.0)) {
+        find_objects_ = false;
+        goal_handle->abort(result);
+        RCLCPP_ERROR(LOGGER, "Failed to get camera data in alloted time.");
+        return;
+      }
+    }
+    feedback->process_description = process_descriptions;
+    goal_handle->publish_feedback(feedback);
+
+    result->hole_position = holes_position_;
+    result->hole_radius = radius_;
+
+    goal_handle->succeed(result);
+  }
+
+
+
+void HolePerceptionAction::cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
+
+    if (!find_objects_) {
+        return;
+    }
+
+    // Remove last time store
+    holes_position_.clear();
+    process_descriptions.clear();
+    radius_.clear();
+
+    // rclcpp::Rate r(0.5);
+    // r.sleep();
     // Convert to point cloud
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud =
         std::make_shared<pcl::PointCloud<pcl::PointXYZRGB>>();
@@ -190,43 +213,39 @@ private:
     }
 
     // Run segmentation
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr plate_cloud_store(new pcl::PointCloud<pcl::PointXYZRGB>);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud_store(new pcl::PointCloud<pcl::PointXYZRGB>);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr plate_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloud_vector;
 
     if (debug_) {
       plate_cloud->header.frame_id = cloud_filtered->header.frame_id;
       hole_cloud->header.frame_id = cloud_filtered->header.frame_id;
     }
-    // segment(cloud_filtered, plate_cloud, hole_cloud);
-    segment(cloud_filtered, plate_cloud_store, hole_cloud_store);
-    *plate_cloud += *plate_cloud_store;
-    *hole_cloud += *hole_cloud_store;
-    
-    // callback loop to collect more point cloud
-    if (count_callback < loop_set) { 
-        return;
-    }
-    hole_extration(plate_cloud, hole_cloud, cloud_vector);
+        segment(cloud_filtered, plate_cloud, hole_cloud);
+        hole_extration(plate_cloud, hole_cloud, cloud_vector);
+        sensor_msgs::msg::PointCloud2 cloud_msg;
+
+       pcl::toROSMsg(*plate_cloud, cloud_msg);
+       plate_cloud_pub_->publish(cloud_msg);
 
     if (cloud_vector.size() > 0) {
         hole_number(cloud_vector);
         hole_projection(cloud_vector, hole_cloud);
         std::vector<float> xc, yc, r;
         float zc;   
-        estimateCircleParams(cloud_vector, xc, yc, zc ,r);
+        estimateCircleParams(cloud_vector, xc, yc, zc ,r, true);
         marker(plate_cloud, xc, yc, zc ,r);
     }else {
         RCLCPP_INFO(LOGGER, "No hole detect to place coffee");
-
+        process_descriptions.push_back("No hole detect to place coffee");
     }
 
     if (debug_) {
       sensor_msgs::msg::PointCloud2 cloud_msg;
       sensor_msgs::msg::PointCloud2 store_msg;
 
-      pcl::toROSMsg(*plate_cloud, cloud_msg);
-      plate_cloud_pub_->publish(cloud_msg);
+    //   pcl::toROSMsg(*plate_cloud, cloud_msg);
+    //   plate_cloud_pub_->publish(cloud_msg);
 
       pcl::toROSMsg(*hole_cloud, cloud_msg);
       holes_cloud_pub_->publish(cloud_msg);
@@ -247,17 +266,19 @@ private:
       colored_cloud_pub_->publish(store_msg);
 
     }
-    count_callback = 0;
-    plate_cloud->clear();
-    hole_cloud->clear();
+
+    find_objects_ = false;
+
   }
 
-  //Segment the plate and hole
-  bool segment(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr &cloud_input,
+//Segment the plate and hole
+bool HolePerceptionAction::segment(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr &cloud_input,
                 pcl::PointCloud<pcl::PointXYZRGB>::Ptr plate_cloud,
              pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud) {
 
-    // RCLCPP_INFO(LOGGER, "object support segmentation starting...");
+    RCLCPP_INFO(LOGGER, "object support segmentation starting...");
+    process_descriptions.push_back("object support segmentation starting...");
+    
     // Convert to point cloud
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZRGB>>();
 
@@ -316,19 +337,21 @@ private:
         }
     }
    
-    // RCLCPP_INFO(LOGGER, "object support segmentation done processing.");
+    RCLCPP_INFO(LOGGER, "object support segmentation done processing.");
+    process_descriptions.push_back("object support segmentation done processing.");
+
     return true;
-  }
+}
 
 
-  // Extract the hole
-  void hole_extration( pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &hole_cloud, std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector){
+// Extract the hole
+void HolePerceptionAction::hole_extration( pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &hole_cloud, std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector){
         
     pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> cluster_extraction;
     cluster_extraction.setInputCloud(hole_cloud);
     cluster_extraction.setClusterTolerance(0.01); // Set the cluster tolerance (max. distance between points in a cluster)
     cluster_extraction.setMinClusterSize(100);    // Set the minimum number of points required for a cluster
-    cluster_extraction.setMaxClusterSize(100000);   // Set the maximum number of points allowed for a cluster
+    cluster_extraction.setMaxClusterSize(1000);   // Set the maximum number of points allowed for a cluster
     std::vector<pcl::PointIndices> clusters;
     cluster_extraction.extract(clusters);
                 
@@ -390,6 +413,13 @@ private:
         }
         cloud_vector.push_back(cloud);
         RCLCPP_INFO(LOGGER, "Cluster %zu size: %zu", count+1 ,cloud_vector[count]->size());
+
+        std::stringstream ss;
+        ss << "Cluster " << (count + 1) << " size: " << cloud_vector[count]->size();
+        std::string s = ss.str();
+
+        process_descriptions.push_back(s);
+
         count++;
     }
 
@@ -419,10 +449,13 @@ private:
     }
 
     RCLCPP_INFO(LOGGER, "Hole seperation done");
-  }
+    process_descriptions.push_back("Hole seperation done");
+
+}
   
-  // Rearrage the order of cloud in vector depending on the distance
-  void hole_number(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector){
+// Rearrage the order of cloud in vector depending on the distance
+void HolePerceptionAction::hole_number(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector){
+    process_descriptions.push_back("Start reorder point cloud");
 
     // Find centroid
     Eigen::Vector4f centroid;
@@ -456,12 +489,15 @@ private:
 
     // Assign sorted_cloud_vector back to cloud_vector
     cloud_vector = sorted_cloud_vector;
+    process_descriptions.push_back("Finish reorder the cloud vector");
 
   }
 
   // Project the border of hole to 2D plane, then use convex vull to filter border out
-  void hole_projection(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &hole_cloud){
-        
+void HolePerceptionAction::hole_projection(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &hole_cloud){
+    
+    process_descriptions.push_back("Start project point cloud");
+
     pcl::PointXYZRGB Min_pt, Max_pt;
     pcl::getMinMax3D(*hole_cloud, Min_pt, Max_pt);
     std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> proj_vector;
@@ -488,11 +524,12 @@ private:
         convex_hull.reconstruct(*cloud_vector[i]);
         
     }
+    process_descriptions.push_back("Finish project point cloud");
 
-  }
+}
 
   // Function to estimate circle parameters using least squares fitting
-  void estimateCircleParams(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector, std::vector<float>& xc, std::vector<float>& yc, float zc, std::vector<float>& r, bool debug = true) {
+void HolePerceptionAction::estimateCircleParams(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector, std::vector<float>& xc, std::vector<float>& yc, float zc, std::vector<float>& r, bool debug = true) {
  
     pcl::PointXYZRGB min_pt, max_pt;
     pcl::getMinMax3D(*cloud_vector[0], min_pt, max_pt);
@@ -530,6 +567,13 @@ private:
                 RCLCPP_INFO(LOGGER, "Hole %zu center in gazebo is: (%f, %f, %f)", count+1, xc[count]- 0.01,  yc[count], zc+1.032); // for cup without cover, this value is related to the inertia pose we set
 
                 RCLCPP_INFO(LOGGER, "Hole %zu center is: (%f, %f, %f)", count+1, xc[count],  yc[count], zc);
+
+                
+                std::stringstream ss;
+                ss << "Hole " << (count + 1) << " center is: (" << xc[count] << ", " << yc[count] << ", " << zc << ")";
+                std::string s = ss.str();
+                process_descriptions.push_back(s);
+
                 RCLCPP_INFO(LOGGER, "Hole %zu radius is: %f", count+1, r[count]);
             }
 
@@ -571,14 +615,20 @@ private:
                     }
         }
     }
-  }
+}
 
-  // Mark the center of find
- void marker(pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud, std::vector<float>& xc, std::vector<float>& yc, float zc, std::vector<float>& r) {
-     
+// Mark the center of find
+void HolePerceptionAction::marker(pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud, std::vector<float>& xc, std::vector<float>& yc, float zc, std::vector<float>& r) {
+    process_descriptions.push_back("Start publish marker");
+
     std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> store_vector;
     store_vector.push_back(plate_cloud);
     
+    // hole_projection(store_vector, plate_cloud);
+    // std::vector<float> xc_p, yc_p, r_p;
+    // float zc_p;   
+    // estimateCircleParams(store_vector, xc_p, yc_p, zc_p ,r_p, false);
+
     // Create marker messages for each hole position
     visualization_msgs::msg::MarkerArray marker_array;
     // Find centroid
@@ -630,46 +680,24 @@ private:
         marker.pose.position.z = centroid.z();
 
         marker_array.markers.push_back(marker);
+        
+        //For action Result
+        geometry_msgs::msg::Point point;
+        point.x = xc[i];
+        point.y = yc[i];
+        point.z = centroid.z();
+        holes_position_.push_back(point);
+        radius_.push_back(r[i]);
     }
-       marker_pub_->publish(marker_array);
+    
+    marker_pub_->publish(marker_array);
+    process_descriptions.push_back("Finish publish marker");
 
-  }
+}
 
-  bool debug_;
-  int count_callback;
-  int loop_set;
-  std::shared_ptr<tf2_ros::Buffer> buffer_;
-  std::shared_ptr<tf2_ros::TransformListener> listener_;
-  std::string world_frame_;
-  std::string camera_topic_;
 
-  double cluster_tolerance;
-
-  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr filter_cloud_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr plate_cloud_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr holes_cloud_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr colored_cloud_pub_;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
-  
-  pcl::PassThrough<pcl::PointXYZRGB> range_filter_x;
-  pcl::PassThrough<pcl::PointXYZRGB> range_filter_y;
-  pcl::PassThrough<pcl::PointXYZRGB> range_filter_z;
-  pcl::VoxelGrid<pcl::PointXYZRGB> voxel_grid_;
-
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr plate_cloud;
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud;
-
-  pcl::SACSegmentationFromNormals<pcl::PointXYZRGB, pcl::Normal> segment_plate; 
-//   pcl::SACSegmentation<pcl::PointXYZRGB> segment_plate; 
-
-  pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB>
-          outliers_filter;
-
-  rclcpp::Clock::SharedPtr clock_;
 };
 
-} // namespace Coffee_Deliver
-
 #include "rclcpp_components/register_node_macro.hpp"
-RCLCPP_COMPONENTS_REGISTER_NODE(Coffee_Service_Perception::BasicHolePerception)
+RCLCPP_COMPONENTS_REGISTER_NODE(Coffee_Service_Perception::HolePerceptionAction)
+

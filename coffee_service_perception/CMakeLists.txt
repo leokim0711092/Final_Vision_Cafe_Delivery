@@ -17,6 +17,7 @@ find_package(shape_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(rosbag2_cpp REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(custom_interfaces REQUIRED)
 
 include_directories(
   include
@@ -37,21 +38,28 @@ set(common_depends
   tf2_ros
   rosbag2_cpp
   visualization_msgs
+  custom_interfaces
 )
 
 ### Build coffee_service_perception library
-add_library(coffee_service_perception SHARED
-	src/hole_plate_segmentation.cpp
+add_library(hole_perception_action SHARED
+	src/hole_perception_action.cpp
+) 
+ament_target_dependencies(hole_perception_action ${common_depends})
+target_link_libraries(hole_perception_action ${PCL_LIBRARIES})
+
+rclcpp_components_register_node(hole_perception_action
+  PLUGIN "Coffee_Service_Perception::HolePerceptionAction"
+  EXECUTABLE hole_perception_action_node
 )
-ament_target_dependencies(coffee_service_perception ${common_depends})
-target_link_libraries(coffee_service_perception ${PCL_LIBRARIES})
+
 
 ### Build basic_hole_perception
 add_library(basic_hole_perception SHARED
   src/ros_hole_perception.cpp
 )
 ament_target_dependencies(basic_hole_perception ${common_depends})
-target_link_libraries(basic_hole_perception coffee_service_perception ${PCL_LIBRARIES})
+target_link_libraries(basic_hole_perception ${PCL_LIBRARIES})
 
 rclcpp_components_register_node(basic_hole_perception
   PLUGIN "Coffee_Service_Perception::BasicHolePerception"
@@ -82,7 +90,7 @@ install(
 
 install(
   TARGETS
-    coffee_service_perception
+	hole_perception_action
 	basic_hole_perception 
 	BagToPCLConversion
   ARCHIVE DESTINATION lib
