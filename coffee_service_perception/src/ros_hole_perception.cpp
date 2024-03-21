@@ -61,7 +61,7 @@ public:
     // use_debug: enable/disable output of a cloud containing object points
     debug_ = this->declare_parameter<bool>("debug_topics", true);
 
-    loop_set = this->declare_parameter<int>("loop_set", 10);
+    loop_set = this->declare_parameter<int>("loop_set", 1);
     count_callback = 0;
     // frame_id: frame to transform cloud to (should be XY horizontal)
     world_frame_ =
@@ -179,6 +179,8 @@ private:
                  static_cast<int>(cloud_filtered->points.size()));
 
     // StatisticalOutlierRemoval filter
+    outliers_filter.setMeanK(50);
+    outliers_filter.setStddevMulThresh(2.5);
     outliers_filter.setInputCloud(cloud_filtered);
     outliers_filter.filter(*cloud_filtered);
 
@@ -487,6 +489,10 @@ private:
         convex_hull.setDimension(2);
         convex_hull.reconstruct(*cloud_vector[i]);
         
+        outliers_filter.setMeanK(static_cast<int>(cloud_vector[i]->size()));
+        outliers_filter.setStddevMulThresh(1.0);
+        outliers_filter.setInputCloud(cloud_vector[i]);
+        outliers_filter.filter(*cloud_vector[i]);
     }
 
   }
@@ -598,12 +604,6 @@ private:
     marker_center.color.g = 0.0;
     marker_center.color.b = 0.0;
     marker_center.color.a = 1.0;
-    
-    // RCLCPP_INFO(LOGGER, "Plate center is: (%f, %f, %f)", xc_p[0], yc_p[0],  zc_p);
-
-    // marker_center.pose.position.x = xc_p[0];
-    // marker_center.pose.position.y = yc_p[0];
-    // marker_center.pose.position.z = -0.5325;
 
     marker_center.pose.position.x = centroid.x();
     marker_center.pose.position.y = centroid.y();
@@ -613,7 +613,7 @@ private:
     for (size_t i = 0; i < xc.size(); ++i) {
         visualization_msgs::msg::Marker marker;
         marker.header.frame_id = "base_link";
-        marker.ns = "holes_" + std::to_string(i); // Namespace with index
+        marker.ns = "holes_center_" + std::to_string(i); // Namespace with index
         marker.type = visualization_msgs::msg::Marker::SPHERE;
         marker.action = visualization_msgs::msg::Marker::ADD;
         marker.scale.x = 0.01; // Adjust scale as needed
@@ -627,9 +627,41 @@ private:
 
         marker.pose.position.x = xc[i];
         marker.pose.position.y = yc[i];
-        marker.pose.position.z = centroid.z();
+        marker.pose.position.z = centroid.z()+0.01;
 
         marker_array.markers.push_back(marker);
+        
+    }
+
+    for (size_t i = 0; i < xc.size(); ++i) {
+        visualization_msgs::msg::Marker marker;
+        marker.header.frame_id = "base_link";
+        marker.ns = "holes_" + std::to_string(i); // Namespace with index
+        marker.type = visualization_msgs::msg::Marker::CYLINDER;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+
+        marker.id = i;
+        marker.color.r = 0.68;
+        marker.color.g = 0.85;
+        marker.color.b = 0.9;
+        marker.color.a = 1.0;
+
+        marker.pose.position.x = xc[i];
+        marker.pose.position.y = yc[i];
+        marker.pose.position.z = centroid.z();
+
+        // Set the orientation to have the cylinder lie on the Z plane
+        marker.pose.orientation.x = 0.0;
+        marker.pose.orientation.y = 1.0;
+        marker.pose.orientation.z = 0.0;
+        marker.pose.orientation.w = 0.0;
+
+        marker.scale.x = r[i] * 2.0; // Diameter
+        marker.scale.y = r[i] * 2.0; // Diameter
+        marker.scale.z = 0.01; // Very thin cylinder to make it look like a circle
+
+        marker_array.markers.push_back(marker);
+        
     }
        marker_pub_->publish(marker_array);
 

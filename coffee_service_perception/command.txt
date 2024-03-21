@@ -1,5 +1,9 @@
-ros2 run coffee_service_perception basic_hole_perception_node --ros-args -p camera_topic:=/D415/depth/color/points
+ros2 run coffee_service_perception basic_hole_perception_node --ros-args -p camera_topic:=/D415/depth/color/points --ros-args -p loop_set:=20
 
 ros2 run coffee_service_perception basic_hole_perception_node --ros-args -p camera_topic:=/D435/depth/color/points
 
+ros2 run coffee_service_perception hole_perception_action_node --ros-args -p loop_set:=10
+
 ros2 run coffee_service_perception hole_perception_action_node --ros-args -p camera_topic:=/D415/depth/color/points
+
+ros2 action send_goal /find_hole custom_interfaces/action/FindHolePosition find_hole:\ true\  --feedback

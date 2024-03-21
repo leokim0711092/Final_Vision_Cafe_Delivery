@@ -1,0 +1,6 @@
+bool find_hole
+---
+geometry_msgs/Point[] hole_position
+float32[] hole_radius
+---
+string[] process_description

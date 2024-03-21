@@ -41,12 +41,21 @@ set(common_depends
   custom_interfaces
 )
 
+### Build hole_perception_pkg library
+add_library(hole_perception_pkg SHARED
+  hole_perception_src/hole_perception_segmentation.cpp
+  hole_perception_src/hole_perception_extration.cpp
+  hole_perception_src/hole_perception_estimate_center.cpp
+)
+ament_target_dependencies(hole_perception_pkg ${common_depends})
+target_link_libraries(hole_perception_pkg ${PCL_LIBRARIES})
+
 ### Build coffee_service_perception library
 add_library(hole_perception_action SHARED
-	src/hole_perception_action.cpp
+	hole_perception_src/hole_perception_action.cpp
 ) 
 ament_target_dependencies(hole_perception_action ${common_depends})
-target_link_libraries(hole_perception_action ${PCL_LIBRARIES})
+target_link_libraries(hole_perception_action hole_perception_pkg ${PCL_LIBRARIES})
 
 rclcpp_components_register_node(hole_perception_action
   PLUGIN "Coffee_Service_Perception::HolePerceptionAction"
@@ -90,6 +99,7 @@ install(
 
 install(
   TARGETS
+    hole_perception_pkg
 	hole_perception_action
 	basic_hole_perception 
 	BagToPCLConversion

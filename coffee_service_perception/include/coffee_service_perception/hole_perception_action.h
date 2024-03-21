@@ -24,6 +24,9 @@
 #include "visualization_msgs/msg/marker_array.hpp"
 
 #include "custom_interfaces/action/find_hole_position.hpp"
+#include "coffee_service_perception/hole_perception_segmentation.h"
+#include "coffee_service_perception/hole_perception_extration.h"
+#include "coffee_service_perception/hole_perception_estimate_center.h"
 
 #include "pcl/common/io.h"
 #include "pcl/common/centroid.h"
@@ -69,22 +72,6 @@ public:
 
   void cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
   
-  //Segment the plate and hole
-  bool segment(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr &cloud_input, 
-                pcl::PointCloud<pcl::PointXYZRGB>::Ptr plate_cloud, 
-                pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud);
-  
-  // Extract the hole
-  void hole_extration(pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud, 
-                      pcl::PointCloud<pcl::PointXYZRGB>::Ptr &hole_cloud, 
-                      std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector);
-
-  // Rearrage the order of cloud in vector depending on the distance
-  void hole_number(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector);
-
-  // Project the border of hole to 2D plane, then use convex vull to filter border out
-  void hole_projection(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector, 
-                       pcl::PointCloud<pcl::PointXYZRGB>::Ptr &hole_cloud);
 
   // Function to estimate circle parameters using least squares fitting
   void estimateCircleParams(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector, 
@@ -108,7 +95,8 @@ public:
 private:
   bool debug_;
   bool find_objects_;
-
+  int count_callback;
+  int loop_set;
   std::vector<geometry_msgs::msg::Point> holes_position_;
   std::vector<std::string> process_descriptions;
   std::vector<float> radius_;
@@ -121,6 +109,13 @@ private:
   double cluster_tolerance;
   rclcpp_action::Server<FindHolesAction>::SharedPtr server_;
 
+  std::shared_ptr<Segmentation> segmentation_;
+  std::shared_ptr<HoleExtration> hole_extration_;
+  std::shared_ptr<EstimateCenter> estimate_center_;
+  
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr plate_cloud;
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud;
+
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr filter_cloud_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr plate_cloud_pub_;
@@ -131,12 +126,9 @@ private:
   pcl::PassThrough<pcl::PointXYZRGB> range_filter_x;
   pcl::PassThrough<pcl::PointXYZRGB> range_filter_y;
   pcl::PassThrough<pcl::PointXYZRGB> range_filter_z;
-  pcl::VoxelGrid<pcl::PointXYZRGB> voxel_grid_;
 
-  pcl::SACSegmentationFromNormals<pcl::PointXYZRGB, pcl::Normal> segment_plate; 
 
-  pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB>
-          outliers_filter;
+  pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB> outliers_filter;
 
   rclcpp::Clock::SharedPtr clock_;
 };
