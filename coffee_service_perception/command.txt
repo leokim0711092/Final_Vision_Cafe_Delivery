@@ -1,9 +1,21 @@
-ros2 run coffee_service_perception basic_hole_perception_node --ros-args -p camera_topic:=/D415/depth/color/points --ros-args -p loop_set:=20
+ros2 run coffee_service_perception basic_hole_perception_node --ros-args -p camera_topic:=/D415/depth/color/points --ros-args -p loop_set:=30
 
 ros2 run coffee_service_perception basic_hole_perception_node --ros-args -p camera_topic:=/D435/depth/color/points
 
 ros2 run coffee_service_perception hole_perception_action_node --ros-args -p loop_set:=10
 
-ros2 run coffee_service_perception hole_perception_action_node --ros-args -p camera_topic:=/D415/depth/color/points
+ros2 run coffee_service_perception hole_perception_action_node --ros-args -p camera_topic:=/D415/depth/color/points --ros-args -p loop_set:=15
+ros2 run coffee_service_perception hole_perception_action_node --ros-args -p camera_topic:=/D415/depth/color/points --ros-args -p loop_set:=30
 
 ros2 action send_goal /find_hole custom_interfaces/action/FindHolePosition find_hole:\ true\  --feedback
+
+ros2 action send_goal /pick_and_place custom_interfaces/action/PickAndPlace "{cup_number: 4, hole_position: [{x: -0.4247589409351349, y: 0.11100596934556961, z: -0.5404457449913025}, 
+                                                                                                             {x: -0.42463603615760803, y: -0.021367277950048447, z: -0.5404457449913025}, 
+                                                                                                             {x: -0.31369855999946594, y: 0.10774987936019897, z: -0.5404457449913025}, 
+                                                                                                             {x: -0.31459134817123413, y: -0.022240282967686653, z: -0.5404457449913025}], 
+                                                                                                             hole_radius: [0.03278648108243942, 0.03477940708398819, 0.03488941863179207, 0.03489026427268982], 
+                                                                                                             plate_center: {x: -0.3669988811016083, y: 0.038130566477775574, z: -0.5484026074409485}}"
+
+ros2 action send_goal /pick_and_place custom_interfaces/action/PickAndPlace "{cup_number: 3, hole_position: [{x: -0.4247589409351349, y: 0.11100596934556961, z: -0.5404457449913025}, 
+                                                                                                             {x: -0.42463603615760803, y: -0.021367277950048447, z: -0.5404457449913025},
+                                                                                                             {x: -0.31369855999946594, y: 0.10774987936019897, z: -0.5404457449913025}]}"

@@ -11,7 +11,6 @@
 #include "geometry_msgs/msg/detail/point__struct.hpp"
 #include "geometry_msgs/msg/detail/pose__struct.hpp"
 #include "pcl_conversions/pcl_conversions.h"
-#include <rclcpp_action/rclcpp_action.hpp>
 #include "rclcpp/logging.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
@@ -72,17 +71,6 @@ public:
 
   void cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
   
-
-  // Function to estimate circle parameters using least squares fitting
-  void estimateCircleParams(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector, 
-                            std::vector<float>& xc, std::vector<float>& yc, 
-                            float zc, std::vector<float>& r, bool debug ); 
-
-  // Mark the center of find
-  void marker(pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud, 
-                std::vector<float>& xc, std::vector<float>& yc, float zc, 
-                std::vector<float>& r); 
-
   rclcpp_action::GoalResponse handle_goal( const rclcpp_action::GoalUUID &uuid,
       std::shared_ptr<const FindHolesAction::Goal> goal_handle);
 
@@ -100,6 +88,7 @@ private:
   std::vector<geometry_msgs::msg::Point> holes_position_;
   std::vector<std::string> process_descriptions;
   std::vector<float> radius_;
+  geometry_msgs::msg::Point plate_center_;
 
   std::shared_ptr<tf2_ros::Buffer> buffer_;
   std::shared_ptr<tf2_ros::TransformListener> listener_;
@@ -122,7 +111,7 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr holes_cloud_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr colored_cloud_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
-  
+
   pcl::PassThrough<pcl::PointXYZRGB> range_filter_x;
   pcl::PassThrough<pcl::PointXYZRGB> range_filter_y;
   pcl::PassThrough<pcl::PointXYZRGB> range_filter_z;

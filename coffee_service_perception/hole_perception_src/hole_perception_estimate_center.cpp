@@ -14,15 +14,19 @@ EstimateCenter::EstimateCenter(rclcpp::Node::SharedPtr node){
 
 
   // Function to estimate circle parameters using least squares fitting
-void EstimateCenter::estimateCircleParams(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector, std::vector<float>& xc, std::vector<float>& yc, float& zc, std::vector<float>& r, 
-                                         std::vector<std::string> & process_descriptions, bool debug = true) {
+void EstimateCenter::estimateCircleParams(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& cloud_vector, std::vector<float>& xc, std::vector<float>& yc, std::vector<float>&  zc, std::vector<float>& r, 
+                                         std::vector<std::string> & process_descriptions) {
     process_descriptions.push_back("Estimate hole center position and radius of each hole");
 
-    pcl::PointXYZRGB min_pt, max_pt;
-    pcl::getMinMax3D(*cloud_vector[0], min_pt, max_pt);
-    zc = (2*min_pt.z + 0.14)/2.0;
-    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> store_vector;
+    for (size_t i = 0; i < cloud_vector.size(); ++i) {
+
+        pcl::PointXYZRGB min_pt, max_pt;
+        pcl::getMinMax3D(*cloud_vector[i], min_pt, max_pt);
+        zc.push_back((2*min_pt.z + 0.10)/2.0); //cup height = 0.14
+    }
     
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> store_vector;
+
     size_t count=0;
     for (size_t i = 0; i < cloud_vector.size(); ++i) {
         // Number of points
@@ -48,22 +52,19 @@ void EstimateCenter::estimateCircleParams(std::vector<pcl::PointCloud<pcl::Point
             yc.push_back(X(1) / 2);
             r.push_back(sqrt(4 * X(2) + X(0) * X(0) + X(1) * X(1)) / 2);
 
-            if (debug) {
-                // RCLCPP_INFO(LOGGER, "Hole %zu center is: (%f, %f, %f)", i+1, xc[i]+ 13.9 - 0.01,  yc[i]-18.56, zc+1.032); // for cup with cover
-                // RCLCPP_INFO(LOGGER, "Hole %zu center in gazebo is: (%f, %f, %f)", count+1, xc[count]+ 13.9 - 0.04- 0.01,  yc[count]-18.56 + 0.04, zc+1.032); // for cup without cover, this value is related to the radius 0.04, 0.01 is the deviation
-                // RCLCPP_INFO(LOGGER, "Hole %zu center in gazebo is: (%f, %f, %f)", count+1, xc[count]- 0.01,  yc[count], zc+1.032); // for cup without cover, this value is related to the inertia pose we set
+            
+            // RCLCPP_INFO(LOGGER, "Hole %zu center is: (%f, %f, %f)", i+1, xc[i]+ 13.9 - 0.01,  yc[i]-18.56, zc+1.032); // for cup with cover
+            // RCLCPP_INFO(LOGGER, "Hole %zu center in gazebo is: (%f, %f, %f)", count+1, xc[count]+ 13.9 - 0.04- 0.01,  yc[count]-18.56 + 0.04, zc+1.032); // for cup without cover, this value is related to the radius 0.04, 0.01 is the deviation
+            // RCLCPP_INFO(LOGGER, "Hole %zu center in gazebo is: (%f, %f, %f)", count+1, xc[count]- 0.01,  yc[count], zc+1.032); // for cup without cover, this value is related to the inertia pose we set
 
-                RCLCPP_INFO(LOGGER, "Hole %zu center is: (%f, %f, %f)", count+1, xc[count],  yc[count], zc);
-                RCLCPP_INFO(LOGGER, "Hole %zu radius is: %f", count+1, r[count]);
+            RCLCPP_INFO(LOGGER, "Hole %zu center is: (%f, %f, %f)", count+1, xc[count],  yc[count], zc[count]);
+            RCLCPP_INFO(LOGGER, "Hole %zu radius is: %f", count+1, r[count]);
 
-                //action feedback
-                std::stringstream ss;
-                ss << "Hole " << (count + 1) << " center is: (" << xc[count] << ", " << yc[count] << ", " << zc << ")";
-                std::string s = ss.str();
-                process_descriptions.push_back(s);
-
-            }
-
+            //action feedback
+            std::stringstream ss;
+            ss << "Hole " << (count + 1) << " center is: (" << xc[count] << ", " << yc[count] << ", " << zc[count] << ")";
+            std::string s = ss.str();
+            process_descriptions.push_back(s);
             count++;
             store_vector.push_back(cloud_vector[i]);
         // }
@@ -73,14 +74,14 @@ void EstimateCenter::estimateCircleParams(std::vector<pcl::PointCloud<pcl::Point
     cloud_vector = store_vector;
     std::vector<std::vector<uint8_t>> cluster_colors;
 
-    if(cloud_vector.size() >0 && debug){
+    if(cloud_vector.size() >0){
 
         // Generate cluster colors
         for (size_t i = 0; i < cloud_vector.size(); ++i) {
             // Lighten the blue color based on its index
             double brightness_factor = static_cast<double>(i) / cloud_vector.size();
             std::vector<uint8_t> blue_color = {0, 0, static_cast<uint8_t>( 255 - brightness_factor * 230 )};
-            cluster_colors.push_back(blue_color);
+            cluster_colors.push_back(blue_color);    
         }
 
 
@@ -95,17 +96,19 @@ void EstimateCenter::estimateCircleParams(std::vector<pcl::PointCloud<pcl::Point
         for (size_t i = 1; i < cloud_vector.size(); ++i) {
 
             std::vector<uint8_t> color = cluster_colors[i];
-                for (auto& point : cloud_vector[i]->points) {
-                        point.r = color[0];
-                        point.g = color[1];
-                        point.b = color[2];
+                    for (size_t j = 0; j < cloud_vector[i]->points.size(); ++j) {
+                        cloud_vector[i]->points[j].r = color[0];
+                        cloud_vector[i]->points[j].g = color[1];
+                        cloud_vector[i]->points[j].b = color[2];
                     }
         }
     }
 }
 
 // Mark the center of find
-void EstimateCenter::marker(pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud, std::vector<float>& xc, std::vector<float>& yc, float& zc, std::vector<float>& r, visualization_msgs::msg::MarkerArray & marker_array) {
+void EstimateCenter::marker(pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud, std::vector<std::string> & process_descriptions,
+                            std::vector<float>& xc, std::vector<float>& yc, std::vector<float>& zc, std::vector<float>& r, geometry_msgs::msg::Point & plate_center,
+                            visualization_msgs::msg::MarkerArray & marker_array) {
 
     std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> store_vector;
     store_vector.push_back(plate_cloud);
@@ -132,6 +135,15 @@ void EstimateCenter::marker(pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud
     marker_center.pose.position.y = centroid.y();
     marker_center.pose.position.z = centroid.z();
     marker_array.markers.push_back(marker_center);
+    plate_center.x = centroid.x();
+    plate_center.y = centroid.y();
+    plate_center.z = centroid.z();
+
+    //action feedback
+    std::stringstream ss;
+    ss << "Plate Center is (" << centroid.x() << ", " << centroid.y() << ", " << centroid.z() << ")";
+    std::string s = ss.str();
+    process_descriptions.push_back(s);
 
     for (size_t i = 0; i < xc.size(); ++i) {
         visualization_msgs::msg::Marker marker;
@@ -150,41 +162,48 @@ void EstimateCenter::marker(pcl::PointCloud<pcl::PointXYZRGB>::Ptr & plate_cloud
 
         marker.pose.position.x = xc[i];
         marker.pose.position.y = yc[i];
-        marker.pose.position.z = centroid.z()+0.01;
+        marker.pose.position.z = centroid.z();
 
         marker_array.markers.push_back(marker);
         
     }
 
     for (size_t i = 0; i < xc.size(); ++i) {
+
+        // marker_array.markers.push_back(marker);
         visualization_msgs::msg::Marker marker;
         marker.header.frame_id = "base_link";
         marker.ns = "holes_" + std::to_string(i); // Namespace with index
-        marker.type = visualization_msgs::msg::Marker::CYLINDER;
+        marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
         marker.action = visualization_msgs::msg::Marker::ADD;
 
         marker.id = i;
-        marker.color.r = 0.68;
-        marker.color.g = 0.85;
+        marker.color.r = 0.0;
+        marker.color.g = 0.4;
         marker.color.b = 0.9;
-        marker.color.a = 1.0;
+        marker.color.a = 1.0; // Make sure to set the alpha to something non-zero to make it visible.
 
-        marker.pose.position.x = xc[i];
-        marker.pose.position.y = yc[i];
-        marker.pose.position.z = centroid.z();
+        marker.scale.x = 0.01; // Thickness of the line
 
-        // Set the orientation to have the cylinder lie on the Z plane
-        marker.pose.orientation.x = 0.0;
-        marker.pose.orientation.y = 1.0;
-        marker.pose.orientation.z = 0.0;
-        marker.pose.orientation.w = 0.0;
+        // Define the number of points around the circle
+        const int points = 72;
+        const float angle_step = 2.0 * M_PI / points;
 
-        marker.scale.x = r[i] * 2.0; // Diameter
-        marker.scale.y = r[i] * 2.0; // Diameter
-        marker.scale.z = 0.01; // Very thin cylinder to make it look like a circle
+        // Calculate points around the circle and add them to the marker
+        for (int j = 0; j <= points; ++j) { // Use <= to close the circle
+            float angle = j * angle_step;
+            float x = xc[i] + r[i] * cos(angle);
+            float y = yc[i] + r[i] * sin(angle);
+            float z = centroid.z(); // Assuming centroid.z is defined elsewhere
 
+            geometry_msgs::msg::Point p;
+            p.x = x;
+            p.y = y;
+            p.z = z;
+            marker.points.push_back(p);
+        }
         marker_array.markers.push_back(marker);
-        
+
     }
 
 

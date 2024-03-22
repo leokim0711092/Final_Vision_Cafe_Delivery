@@ -26,7 +26,7 @@ def generate_launch_description():
             os.path.join(
                 get_package_share_directory("moveit2_scripts"),
                 "config",
-                "arm_config.yaml",
+                "arm_real_config.yaml",
             ),
             moveit_config.robot_description,
             moveit_config.robot_description_semantic,

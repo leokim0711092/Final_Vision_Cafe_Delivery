@@ -29,7 +29,7 @@ void HoleExtration::hole_extration( pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pla
     std::vector<pcl::PointIndices> clusters;
     cluster_extraction.extract(clusters);
                 
-    RCLCPP_DEBUG(LOGGER, "Hole cloud size: %zu, Exstract %zu Cluster", hole_cloud->size(), clusters.size());
+    RCLCPP_INFO(LOGGER, "Hole cloud size: %zu, Exstract %zu Cluster", hole_cloud->size(), clusters.size());
 
     pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices_;
     extract_indices_.setInputCloud(hole_cloud);
@@ -37,11 +37,11 @@ void HoleExtration::hole_extration( pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pla
     std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> store_vector;
 
     for (size_t i = 0; i < clusters.size(); i++) {
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-    store_vector.push_back(hole_cloud);
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        store_vector.push_back(hole_cloud);
 
-    extract_indices_.setIndices(pcl::PointIndicesPtr(new pcl::PointIndices(clusters[i])));
-    extract_indices_.filter(*store_vector[i]);
+        extract_indices_.setIndices(pcl::PointIndicesPtr(new pcl::PointIndices(clusters[i])));
+        extract_indices_.filter(*store_vector[i]);
     }
 
     std::vector<std::vector<size_t>> groups;
@@ -87,7 +87,7 @@ void HoleExtration::hole_extration( pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pla
         RCLCPP_INFO(LOGGER, "Cluster %zu size: %zu", count+1 ,cloud_vector[count]->size());
         //action feedback
         std::stringstream ss;
-        ss << "Cluster " << (count + 1) << " size: " << cloud_vector[count]->size()<< ", this hole has the coffee";
+        ss << "Cluster " << (count + 1) << " size: " << cloud_vector[count]->size();
         std::string s = ss.str();
         process_descriptions.push_back(s);
 
@@ -113,7 +113,7 @@ void HoleExtration::hole_extration( pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pla
             cloud_vector.push_back(store_vector[i]);
             
 
-            RCLCPP_INFO(LOGGER, "Cluster %zu size: %zu, this is coffee cluster", count+1 ,cloud_vector[count]->size());
+            RCLCPP_INFO(LOGGER, "Cluster %zu size: %zu", count+1 ,cloud_vector[count]->size());
             //action feedback
             std::stringstream ss;
             ss << "Cluster " << (count + 1) << " size: " << cloud_vector[count]->size();
@@ -177,9 +177,11 @@ void HoleExtration::hole_projection(std::vector<pcl::PointCloud<pcl::PointXYZRGB
 
     pcl::PointXYZRGB Min_pt, Max_pt;
     pcl::getMinMax3D(*hole_cloud, Min_pt, Max_pt);
-    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> proj_vector;
 
    for (size_t i = 0; i < cloud_vector.size(); ++i) {
+
+        // pcl::PointXYZRGB Min_pt, Max_pt;
+        // pcl::getMinMax3D(*cloud_vector[i], Min_pt, Max_pt);
 
         // Create a set of planar coefficients with X=Y=0,Z=min_z
         pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients ());

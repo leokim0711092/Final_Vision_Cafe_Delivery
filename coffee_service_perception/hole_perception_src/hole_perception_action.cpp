@@ -53,7 +53,7 @@ HolePerceptionAction::HolePerceptionAction(const rclcpp::NodeOptions &options)
 
     // Range filter for cloud3
     range_filter_x.setFilterFieldName("x");
-    range_filter_x.setFilterLimits(-0.6, 0.0);
+    range_filter_x.setFilterLimits(-0.65, 0.0);
 
     range_filter_y.setFilterFieldName("y");
     range_filter_y.setFilterLimits(-0.35, 0.28);
@@ -137,19 +137,20 @@ void HolePerceptionAction::handle_accepted(const std::shared_ptr<FindHoleActionG
     find_objects_ = goal->find_hole;
     rclcpp::Time t = clock_->now();
     while (find_objects_ == true) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(20));
-      if (clock_->now() - t > rclcpp::Duration::from_seconds(3.0)) {
-        find_objects_ = false;
-        goal_handle->abort(result);
-        RCLCPP_ERROR(LOGGER, "Failed to get camera data in alloted time.");
-        return;
-      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    //   if (clock_->now() - t > rclcpp::Duration::from_seconds(3.0)) {
+    //     find_objects_ = false;
+    //     goal_handle->abort(result);
+    //     RCLCPP_ERROR(LOGGER, "Failed to get camera data in alloted time.");
+    //     return;
+    //   }
     }
     feedback->process_description = process_descriptions;
     goal_handle->publish_feedback(feedback);
 
     result->hole_position = holes_position_;
     result->hole_radius = radius_;
+    result->plate_center = plate_center_;
 
     goal_handle->succeed(result);
   }
@@ -157,16 +158,20 @@ void HolePerceptionAction::handle_accepted(const std::shared_ptr<FindHoleActionG
 
 
 void HolePerceptionAction::cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
-    count_callback++;
+
 
     if (!find_objects_) {
         return;
     }
-
+    count_callback++;
+    RCLCPP_INFO(LOGGER, "Count : %d", count_callback);
     // Remove last time store
     holes_position_.clear();
     process_descriptions.clear();
     radius_.clear();
+    plate_center_.x = 0.0;
+    plate_center_.y = 0.0;
+    plate_center_.z = 0.0;
 
     // Convert to point cloud
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud =
@@ -219,38 +224,44 @@ void HolePerceptionAction::cloud_callback(const sensor_msgs::msg::PointCloud2::S
     // Run segmentation
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr plate_cloud_store(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr hole_cloud_store(new pcl::PointCloud<pcl::PointXYZRGB>);
-    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloud_vector;
 
     if (debug_) {
+      plate_cloud_store->header.frame_id = cloud_filtered->header.frame_id;
+      hole_cloud_store->header.frame_id = cloud_filtered->header.frame_id;
       plate_cloud->header.frame_id = cloud_filtered->header.frame_id;
       hole_cloud->header.frame_id = cloud_filtered->header.frame_id;
     }
-        // segment(cloud_filtered, plate_cloud, hole_cloud);
-        segmentation_->segment(cloud_filtered, plate_cloud_store, hole_cloud_store, process_descriptions);
-        *plate_cloud += *plate_cloud_store;
-        *hole_cloud += *hole_cloud_store;
-        hole_extration_->hole_extration(plate_cloud, hole_cloud, cloud_vector, process_descriptions);
+    // segment(cloud_filtered, plate_cloud, hole_cloud);
+    segmentation_->segment(cloud_filtered, plate_cloud_store, hole_cloud_store, process_descriptions);
+    *plate_cloud += *plate_cloud_store;
+    *hole_cloud += *hole_cloud_store;
+
     // callback loop to collect more point cloud
     if (count_callback < loop_set) { 
         return;
     }
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> cloud_vector;
+
+    hole_extration_->hole_extration(plate_cloud, hole_cloud, cloud_vector, process_descriptions);
+
 
     if (cloud_vector.size() > 0) {
         hole_extration_->hole_number(cloud_vector, process_descriptions);
         hole_extration_->hole_projection(cloud_vector, hole_cloud, process_descriptions);
-        std::vector<float> xc, yc, r;
-        float zc;   
-        estimate_center_->estimateCircleParams(cloud_vector, xc, yc, zc ,r,  process_descriptions, true);
+        std::vector<float> xc, yc, zc, r;
+        estimate_center_->estimateCircleParams(cloud_vector, xc, yc, zc ,r,  process_descriptions);
         visualization_msgs::msg::MarkerArray marker_array;
-        estimate_center_->marker(plate_cloud, xc, yc, zc ,r, marker_array);
+        geometry_msgs::msg::Point plate_center;
+        estimate_center_->marker(plate_cloud, process_descriptions, xc, yc, zc ,r, plate_center, marker_array);
         marker_pub_->publish(marker_array);
-        
+       
         //For action Result
+        plate_center_ = plate_center;
         for (size_t i = 0; i < xc.size(); ++i) {
             geometry_msgs::msg::Point point;
             point.x = xc[i];
             point.y = yc[i];
-            point.z = zc;
+            point.z = zc[i];
             holes_position_.push_back(point);
             radius_.push_back(r[i]);
         }
@@ -264,25 +275,21 @@ void HolePerceptionAction::cloud_callback(const sensor_msgs::msg::PointCloud2::S
       sensor_msgs::msg::PointCloud2 store_msg;
 
       pcl::toROSMsg(*plate_cloud, cloud_msg);
+      cloud_msg.header.frame_id = cloud_filtered->header.frame_id; 
+
       plate_cloud_pub_->publish(cloud_msg);
 
       pcl::toROSMsg(*hole_cloud, cloud_msg);
       holes_cloud_pub_->publish(cloud_msg);
 
 
-      for (size_t i = 0; i < cloud_vector.size(); ++i) {
-        pcl::toROSMsg(*cloud_vector[i], cloud_msg);
-        if( i == 0){
-            store_msg = cloud_msg; 
-        }else{
-         // Concatenate the point cloud data
-        store_msg.width += cloud_msg.width;
-        store_msg.row_step += cloud_msg.row_step;
-        store_msg.data.insert(store_msg.data.end(), cloud_msg.data.begin(), cloud_msg.data.end());
-        }
-      }        
-
-      colored_cloud_pub_->publish(store_msg);
+      pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_store(new pcl::PointCloud<pcl::PointXYZRGB>());
+      for (const auto& cloudPtr : cloud_vector) {
+        *cloud_store += *cloudPtr; // Assuming all clouds are in the same frame
+      }
+      pcl::toROSMsg(*cloud_store, cloud_msg);
+      cloud_msg.header.frame_id = cloud_filtered->header.frame_id; // Set appropriate frame_id
+      colored_cloud_pub_->publish(cloud_msg);
 
     }
     count_callback = 0;

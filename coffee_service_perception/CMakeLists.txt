@@ -111,7 +111,6 @@ install(
 install(DIRECTORY
   launch
   models
-
   DESTINATION share/${PROJECT_NAME}
 )
 
@@ -120,7 +119,13 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME})
 
 ament_export_include_directories(include)
-ament_export_libraries(coffee_service_perception)
+# ament_export_libraries(coffee_service_perception)
+ament_export_libraries(    
+	hole_perception_pkg
+	hole_perception_action
+	basic_hole_perception 
+	BagToPCLConversion)
+
 ament_export_dependencies(
   geometry_msgs
   grasping_msgs
@@ -132,6 +137,8 @@ ament_export_dependencies(
   sensor_msgs
   shape_msgs
   tf2_ros
+  rosbag2_cpp
   visualization_msgs
+  custom_interfaces
 )
 ament_package()

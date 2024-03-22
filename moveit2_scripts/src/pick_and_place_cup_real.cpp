@@ -167,6 +167,7 @@ int main(int argc, char **argv) {
   joint_group_positions_arm[3] = -1.202; // Wrist 1
   joint_group_positions_arm[4] = -1.57; // Wrist 2
   joint_group_positions_arm[5] = -0.514;  // Wrist 3
+//   joint_group_positions_arm[5] = 1.056;  // Wrist 3
 
   move_group_arm.setJointValueTarget(joint_group_positions_arm);
 
@@ -407,10 +408,10 @@ int main(int argc, char **argv) {
   RCLCPP_INFO(LOGGER, "Z Retrieve from hole position");
 
   std::vector<geometry_msgs::msg::Pose> z_retrieve_waypoints;
-  target_pose2.position.z += z_approach/1.8;
+  target_pose2.position.z += z_approach/2.0;
   z_retrieve_waypoints.push_back(target_pose2);
 
-  target_pose2.position.z += z_approach/1.8;
+  target_pose2.position.z += z_approach/2.0;
   z_retrieve_waypoints.push_back(target_pose2);
 
   moveit_msgs::msg::RobotTrajectory trajectory_z_retrieve;
