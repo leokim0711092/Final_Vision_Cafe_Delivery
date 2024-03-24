@@ -16,7 +16,7 @@ def gen_robot_info():
 
     # pose_1 = [13.64, -18.51, 1.57]
     # pose_1 = [13.58, -18.51, 1.57]
-    pose_1 = [13.52, -18.51, 1.57]
+    pose_1 = [13.50, -18.51, 1.57]
 
     robot_name = "barista_1"
     x_pos = pose_1[0]

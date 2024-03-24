@@ -1,7 +1,9 @@
-bool find_hole
----
+int32 cup_number
+string service
 geometry_msgs/Point[] hole_position
 float32[] hole_radius
 geometry_msgs/Point plate_center
+---
+string result
 ---
 string[] process_description
