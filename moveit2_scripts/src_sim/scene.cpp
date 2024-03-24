@@ -90,14 +90,14 @@ int main(int argc, char **argv) {
     // Define the size of the box in meters
     primitive_1.type = primitive_1.BOX;
     primitive_1.dimensions.resize(3);
-    primitive_1.dimensions[primitive_1.BOX_X] = 0.85;
+    primitive_1.dimensions[primitive_1.BOX_X] = 1.7;
     primitive_1.dimensions[primitive_1.BOX_Y] = 0.05;
-    primitive_1.dimensions[primitive_1.BOX_Z] = 0.6;
+    primitive_1.dimensions[primitive_1.BOX_Z] = 1.2;
 
     // Define the pose of the box (relative to the frame_id)
     geometry_msgs::msg::Pose box_pose_1;
     box_pose_1.orientation.w = 1.0;
-    box_pose_1.position.x = 0.3;
+    box_pose_1.position.x = 0.0;
     box_pose_1.position.y = -0.3;
     box_pose_1.position.z = 0.3; // add more than
 
@@ -271,7 +271,7 @@ auto const collision_object_plate = [frame_id =
   moveit::planning_interface::PlanningSceneInterface planning_scene_interface_2;
   moveit::planning_interface::PlanningSceneInterface planning_scene_interface_3;
   moveit::planning_interface::PlanningSceneInterface planning_scene_interface_4;
-  moveit::planning_interface::PlanningSceneInterface planning_scene_interface_5;
+//   moveit::planning_interface::PlanningSceneInterface planning_scene_interface_5;
 
 //   moveit::planning_interface::PlanningSceneInterface coffee;
 
@@ -280,7 +280,7 @@ auto const collision_object_plate = [frame_id =
   planning_scene_interface_2.applyCollisionObject(collision_object_coffee_machine_base);
   planning_scene_interface_3.applyCollisionObject(collision_object_coffee_machine_head);
   planning_scene_interface_4.applyCollisionObject(collision_object_coffee_machine_nozzle);
-  planning_scene_interface_5.applyCollisionObject(collision_object_plate);
+//   planning_scene_interface_5.applyCollisionObject(collision_object_plate);
 
 //   coffee.applyCollisionObject(collision_object_cube);
 

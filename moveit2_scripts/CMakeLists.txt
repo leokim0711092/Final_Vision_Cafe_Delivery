@@ -9,6 +9,8 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
+find_package(rclcpp_components REQUIRED)
+
 find_package(moveit_core REQUIRED)
 find_package(moveit_ros_planning REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
@@ -17,18 +19,20 @@ find_package(geometric_shapes REQUIRED)
 find_package(control_msgs REQUIRED)
 find_package(moveit_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
+find_package(custom_interfaces REQUIRED)
 
 
 set(common_depends
 	rclcpp
 	rclcpp_action
+	rclcpp_components
 	moveit_core
 	moveit_ros_planning_interface
 	interactive_markers
 	moveit_ros_planning
 	control_msgs
 	tf2_eigen
-
+    custom_interfaces
 )
 
 
@@ -45,8 +49,21 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+
+### Build coffee_service_perception library
+add_library(pick_and_place_real_action SHARED
+	src_real/pick_and_place_real_action.cpp
+) 
+ament_target_dependencies(pick_and_place_real_action ${common_depends})
+
+rclcpp_components_register_node(pick_and_place_real_action
+  PLUGIN "Pick_And_Place::MoevitAction"
+  EXECUTABLE pick_and_place_real_action_node
+)
+
+
 add_executable(pick_and_place
-    src/pick_and_place.cpp)
+    src_sim/pick_and_place.cpp)
 target_include_directories(pick_and_place
     PUBLIC include)
 
@@ -61,7 +78,7 @@ ament_target_dependencies(pick_and_place
 	control_msgs)
 
 add_executable(pick_and_place_real
-    src/pick_and_place_real.cpp)
+    src_real/pick_and_place_real.cpp)
 target_include_directories(pick_and_place_real
     PUBLIC include)
 
@@ -77,7 +94,7 @@ ament_target_dependencies(pick_and_place_real
 
 
 add_executable(pick_and_place_cup
-    src/pick_and_place_cup.cpp)
+    src_sim/pick_and_place_cup.cpp)
 target_include_directories(pick_and_place_cup
     PUBLIC include)
 
@@ -85,7 +102,7 @@ ament_target_dependencies(pick_and_place_cup ${common_depends})
 
 
 add_executable(pick_and_place_real_cup
-    src/pick_and_place_cup_real.cpp)
+    src_real/pick_and_place_cup_real.cpp)
 target_include_directories(pick_and_place_real_cup
     PUBLIC include)
 
@@ -93,7 +110,7 @@ ament_target_dependencies(pick_and_place_real_cup ${common_depends})
 
 
 add_executable(scene
-    src/scene.cpp)
+    src_sim/scene.cpp)
 target_include_directories(scene
     PUBLIC include)
 
@@ -116,6 +133,15 @@ install(TARGETS
 	pick_and_place_real_cup
 	scene
     DESTINATION lib/${PROJECT_NAME}
+)
+
+install(
+  TARGETS
+  pick_and_place_real_action
+
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION lib/${PACKAGE_NAME}
 )
 
 # Install the launch file

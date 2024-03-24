@@ -116,7 +116,8 @@ int main(int argc, char **argv) {
   joint_group_positions_arm[2] = 0.700;  // Elbow
   joint_group_positions_arm[3] = -1.202; // Wrist 1
   joint_group_positions_arm[4] = -1.57; // Wrist 2
-  joint_group_positions_arm[5] = -0.514;  // Wrist 3
+//   joint_group_positions_arm[5] = -0.514;  // Wrist 3
+  joint_group_positions_arm[5] = -2.08;  // Wrist 3
 
   move_group_arm.setJointValueTarget(joint_group_positions_arm);
 
@@ -137,11 +138,16 @@ int main(int argc, char **argv) {
   target_pose1.orientation.y = 0.0;
   target_pose1.orientation.z = 0.0;
   target_pose1.orientation.w = 0.0;
+//   target_pose1.orientation.x = 0.707;
+//   target_pose1.orientation.y = 0.707;
+//   target_pose1.orientation.z = 0.0;
+//   target_pose1.orientation.w = 0.0;
 
   target_pose1.position.x = 0.083;
   target_pose1.position.y = 0.414;
   target_pose1.position.z = 0.35;
   
+
 /****************************************************
     *                Open gripper                     *
     ***************************************************/
@@ -235,8 +241,12 @@ int main(int argc, char **argv) {
   moveit_msgs::msg::OrientationConstraint ocm; // Orientation constraint set
   ocm.link_name = END_EFFECTOR_LINK; // Replace with your actual end-effector link name
   ocm.header.frame_id = "base_link"; // Replace with your reference frame
-  ocm.orientation.x = 1;
-  ocm.orientation.y = 0;
+//   ocm.orientation.x = 1;
+//   ocm.orientation.y = 0;
+//   ocm.orientation.z = 0;
+//   ocm.orientation.w = 0;
+  ocm.orientation.x = 0.707;
+  ocm.orientation.y = 0.707;
   ocm.orientation.z = 0;
   ocm.orientation.w = 0;
   ocm.absolute_x_axis_tolerance = 0.02; // Adjust tolerance as needed
