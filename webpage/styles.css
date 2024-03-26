@@ -1,0 +1,333 @@
+* {
+    margin: 0;
+    padding: 0;
+    font-family: 'Noto Sans', sans-serif;
+}
+
+
+body {
+    background-color: #F4EFE9; /* Lighter warm tone */
+    color: #6F4E37; /* Coffee brown */
+}
+
+
+/*hero*/
+
+.hero {
+  background-image: url("Coffee_background.jpg");
+  background-size: cover;
+  background-position: center;
+  height: 120vh;
+  display: flex;
+
+
+  text-align: left;
+  color: #fff;
+}
+
+.hero-content {
+  max-width: 600px;
+  padding: 20px;
+  margin-top :50px;
+  margin-left: 0.5%;
+  
+}
+
+.hero-content h1 {
+  font-size: 46px;
+  margin-bottom: 10px;
+}
+
+.hero-content p {
+  font-size: 24px;
+  margin-bottom: 30px;
+}
+
+.btn {
+  display: inline-block;
+  border: 2px solid #FFFFFF !important; /* White border for contrast */
+
+  background-color: #8C7051 !important ; /* Button's original color */
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 5px;
+  text-decoration: none;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+    background-color: #a2836e; /* Lighter shade for hover */
+}
+
+/*about*/
+
+.about {
+  display: flex;
+  align-items: center;
+  padding: 80px 0;
+}
+
+.about-content {
+  flex: 1;
+  max-width: 600px;
+  padding-right: 50px;
+  color: #fff;
+  margin-left: 5%;
+}
+
+.about h2 {
+  font-size: 36px;
+  margin-bottom: 20px;
+}
+
+.about p {
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+.about-image {
+  max-width: 50%;
+  margin-right: 1%;
+}
+
+.about-image img {
+  max-width: 150%;
+  height: auto;
+  border-radius: 5px;
+}
+
+.dark-theme {
+  background-color: #070e16;
+}
+
+
+/* menu*/
+
+.menu {
+  background-color: #f4f4f4;
+  padding: 40px;
+  color: #6F4E37; /* Coffee brown */
+  text-align: center;
+}
+
+.menu h2 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+}
+
+.menu-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  padding: 20px 0;
+}
+
+.menu-item {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.menu-item img {
+  width: 100%;
+  height: 200px; /* Or any fixed height */
+  object-fit: contain; /* Ensures image is scaled to maintain its aspect ratio while fitting within the element's box */
+  border-radius: 5px;
+  margin-bottom: 10px;
+}
+.menu-item h3 {
+  font-size: 1.5rem;
+  color: #A67B5B; /* Warm brown */
+  margin-bottom: 10px;
+}
+
+.menu-item p {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #333;
+}
+
+
+
+ /*Order coffee */
+.order-coffee-section {
+    font-family: 'Roboto', sans-serif; /* Sets the default font for the content */
+    background-image: url("Real_Robot_cafeteria.gif"), url("order_coffee.jpg"); /* Replace with your image paths */
+    background-size: contain, contain; /* Adjusts the size of both images to fit their content boxes */
+    background-position: left top, right top; /* Positions one image to the left, the other to the right */
+    background-repeat: no-repeat, no-repeat; /* Ensures both images do not repeat */
+    color: #FFFFFF; /* White text for contrast */
+    padding: 40px 0;
+    text-align: center;
+}
+.order-coffee h2 {
+    text-align: center;
+    color: #6F4E37;
+    margin-bottom: 30px;
+    font-size: 32px;
+    font-weight: 600;
+}
+
+
+.section-title {
+    font-family: 'Roboto', sans-serif; /* Sets the default font for the content */
+    text-align: center;
+    color: #F4EFE9; /* Soft cream color */
+    margin-bottom: 40px;
+    font-size: 32px;
+    font-weight: 600;
+}
+
+/* Overall container adjustments for a warmer feel */
+.container {
+    background-color: #F3EDE6; /* Light and consistent background across the section */
+    color: #6F4E37; /* Coffee brown text */
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+.status-label_1 {
+    font-family: 'Roboto', sans-serif; /* Sets the default font for the content */
+
+    color: #6F4E37; /* Coffee brown text for consistency */
+    margin-bottom: 20px;
+}
+
+.coffee-amount-label {
+    display: block; /* Ensures the label is on its own line */
+    font-size: 1.2rem; /* Adjusts the font size to match your design */
+    color: #6F4E37; /* Coffee brown, consistent with other labels */
+    margin: 20px 0 10px; /* Adds some space above and slightly less below */
+}
+
+.control {
+    border: 2px solid #A67B5B;
+    background-color: #FFF7F0;
+    color: #6F4E37;
+padding: 0.375rem 0.75rem;
+        font-size: 1rem;
+
+    border-radius: 0.25rem;
+    flex-grow: 1; /* Allows the input and buttons to expand to fill the available space */
+}
+.controls-wrapper {
+    display: flex;
+    justify-content: center; /* Center-aligns flex items on the main axis */
+    gap: 10px; /* Adds space between the input and button */
+    margin-top: 10px; /* Additional spacing from the label or status */
+}
+.connect-btn {
+    margin-top: 10px; /* Additional spacing from the label or status */
+    display: flex;
+    justify-content: center; /* Center-aligns flex items on the main axis */
+    gap: 10px; /* Adds space between the input and button */
+    margin-top: 10px; /* Additional spacing from the label or status */
+}
+
+.btn-danger_1, .btn-success_1, .btn-primary_1 {
+    background-color: #8C7051;
+    border: none;
+    padding: 10px 20px;
+    margin: 5px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+    flex-grow: 1; /* Allows the input and buttons to expand to fill the available space */
+}
+
+.btn-danger_1:hover, .btn-success_1:hover, .btn-primary_1:hover {
+    background-color: #dc9766; /* Darker shade for hover effect */
+    color: #FFFFFF;
+}
+
+.text-danger {
+    color: #D9534F; /* Bootstrap default danger color */
+    font-size: 1.2rem; /* Adjusts the font size to match your design */
+    margin: 20px 0 10px; /* Adds some space above and slightly less below */
+
+}
+
+.text-success {
+    color: #5CB85C; /* Bootstrap default success color */
+    font-size: 1.2rem; /* Adjusts the font size to match your design */
+    margin: 20px 0 10px; /* Adds some space above and slightly less below */
+
+}
+
+.feedback, .result {
+    font-family: 'Roboto', sans-serif;
+    background-color: #EDE0D4;
+    padding: 15px;
+    border-radius: 5px;
+    border-left: 7px solid #A67B5B;
+    margin: 10px 0;
+    min-height: 140px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Adds subtle shadow for depth */
+}
+
+/* Enhanced styles for <label> */
+.feedback > label, .result > label {
+    color: #6F4E37;
+    font-size: 1.4em; /* Increase size for more emphasis */
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2); /* Adds shadow for depth */
+    display: block; /* Ensures labels take up their own line for clear separation */
+    margin-bottom: 30px; /* Adds space below the label */
+}
+
+/* Adjusted styles for <p> */
+.feedback > p, .result > p {
+    color: white;
+    font-size: 1.2em; /* Slightly larger but still smaller than label */
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.15); /* Softer shadow for distinction */
+    font-family: 'Arial', sans-serif; /* Optional: different font for contrast */
+    font-style: italic; /* Optional: italicize for differentiation */
+    padding-left: 10px; /* Indent text for hierarchy */
+}
+
+
+/* Footer*/
+
+.footer {
+  background-color: #98806e;
+  padding: 10px 0;
+  color: #fff;
+  text-align: center;
+}
+
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+.footer-logo img {
+  max-width: 200px;
+}
+
+.footer-links a {
+  color: #fff;
+  margin: 0 10px;
+  text-decoration: none;
+}
+
+.footer-social a {
+  color: #fff;
+  margin: 0 5px;
+  text-decoration: none;
+}
+
+.footer-text {
+  font-size: 14px;
+}
+
+
+
+
+
+
+

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+  <link rel="stylesheet" type="text/css" href="styles.css">
+    <meta charset="UTF-8">
+    <title>ROS Web Interface</title>
+     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script type="text/javascript" src="https://s3.eu-west-1.amazonaws.com/rosject.io/js/roslib.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Pacifico&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+<section class="hero">
+  <div class="hero-content">
+    <h1>Welcome to Startbot coffee</h1>
+    <p>Experience the Service of starbot</p>
+    <a href="#menu" class="btn">Explore Our Menu</a>
+  </div>
+</section>
+
+<section class="about dark-theme">
+  <div class="about-content">
+    <h2>About Coffee Startbot</h2>
+    <p>Welcome to our innovative café experience, where the future of coffee service meets robotic precision. 
+    Our café revolutionizes the traditional coffee shop, integrating a state-of-the-art UR3e robotic arm for seamless coffee preparation and delivery.
+    This blend of technology and tradition ensures each cup of coffee is not just made but crafted with precision and care.
+    Join us in embracing the future of coffee—a perfect harmony of efficiency, quality, and the art of coffee making.</p>
+    <a href="#order-coffee" class="btn">Order coffee</a>
+  </div>
+  <div class="about-image">
+    <img src="robot_arm.png" alt="About Image">
+  </div>
+</section>
+
+
+<section id="menu" class="menu">
+  <h2>Our Menu</h2>
+  <div class="menu-items">
+    <div class="menu-item">
+      <img src="Cappuccino.jpg" alt="coffee 1">
+      <h3>Cappuccino</h3>
+      <p>Espresso-based coffee drink prepared with steamed milk foam</p>
+    </div>
+    <div class="menu-item">
+      <img src="Americano.jpg" alt="coffee 2">
+      <h3>Americano</h3>
+      <p>A coffee drink prepared by diluting an espresso with hot water</p>
+    </div>
+    <div class="menu-item">
+      <img src="latte.jpg" alt="coffee 3">
+      <h3>Latte</h3>
+      <p>A coffee beverage of Italian origin made with espresso and steamed milk</p>
+    </div>
+    <div class="menu-item">
+      <img src="Mocha latte.jpg" alt="coffee 4">
+      <h3>Mocha</h3>
+      <p>An espresso-based drink with hot milk and chocolate</p>
+    </div>
+  </div>
+</section>
+
+
+<section id="order-coffee" class="order-coffee-section">
+    <h2 class="section-title">Order Coffee</h2>
+    <div id="app" class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 text-center">
+            <h3 class="status-label_1">Connection Status</h3>
+                <p class="text-danger" v-if="!connected">Not Connected</p>
+                <p class="text-success" v-if="connected">Connected</p>
+                <div class="controls-wrapper">
+                    <input type="text" v-model="rosbridge_address" class="control" placeholder="Enter ROSBridge Address">
+                    <button :disabled="loading" class="btn btn-danger_1 mt-2" @click="disconnect" v-if="connected">Disconnect</button>
+                    <button :disabled="loading" class="btn btn-success_1 mt-2" @click="connect" v-else>Connect</button>
+                </div>
+            </div>
+            <div class="col-md-6 text-center">
+                <h3 class="status-label_1">Action Goal</h3>
+                <label for="coffeeAmount" class="coffee-amount-label">Coffee Amount (Max: 4)</label>
+                <div class="controls-wrapper">
+                    <input type="number" id="coffeeAmount" v-model.number="service_request" class="control" max="4" min="1">
+                    <button @click="send_goal" :disabled="loading || !connected || service_busy" class="btn btn-primary_1 mt-2">Send Goal</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row justify-content-center">
+            <div class="col-md-6 text-center">
+                <div class="feedback">
+                    <label>Feedback</label>
+                    <p>{{ feedback }}</p>
+                </div>
+            </div>
+            <div class="col-md-6 text-center">
+                <div class="result">
+                    <label>Result</label>
+                    <p>{{ result }}</p>
+            </div>
+        </div>
+        <!-- <div class="col-md-12 text-center">
+                <h3 class="status-label">Connection status</h3>
+                <p class="text-danger" v-if="!connected">Not connected!</p>
+                <p class="text-success" v-if="connected">Connected!</p>
+                <div class="connect-btn">
+                    <input type="text" v-model="rosbridge_address" class="form-control" placeholder="Enter ROSBridge address" />
+                    <button :disabled="loading" class="btn btn-danger mt-2" @click="disconnect" v-if="connected">Disconnect</button>
+                    <button :disabled="loading" class="btn btn-success mt-2" @click="connect" v-else>Connect</button>
+                </div>
+            </div>
+            <div class="col-md-12 action-section">
+                <div class="text-center">
+                    <h5>Action Goal</h5>
+                    <div class="my-4">
+                        <label>Coffee amount (Max: 4)</label>
+                        <input type="number" v-model.number="service_request" class="form-control" />
+                        <button @click="send_goal" :disabled="loading || !connected || service_busy" class="btn btn-primary mt-2">Send Goal</button>
+                    </div>
+                    <div class="feedback">
+                        <label>Feedback</label>
+                        <p>{{ feedback }}</p>
+                    </div>
+                    <div class="result">
+                        <label>Result</label>
+                        <p>{{ result }}</p>
+                    </div>
+                </div>
+            </div>
+        </div> -->
+    </div>
+</section>
+
+
+<footer class="footer">
+  <div class="footer-content">
+    <div class="footer-logo">
+      <img src="logo.png" alt="Logo">
+    </div>
+  </div>
+  <p class="footer-text">&copy; 2024 The construct starbot. All rights reserved.</p>
+</footer>
+
+    <script type="text/javascript">
+        var script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = 'main.js?v=6.' + Date.now();
+        document.head.appendChild(script);
+    </script>
+
+</body>
