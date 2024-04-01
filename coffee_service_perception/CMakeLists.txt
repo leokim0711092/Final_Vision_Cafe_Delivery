@@ -6,7 +6,6 @@ find_package(PCL REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(grasping_msgs REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(pcl_ros REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -27,7 +26,6 @@ include_directories(
 
 set(common_depends
   geometry_msgs
-  grasping_msgs
   pcl_conversions
   pcl_ros
   rclcpp
@@ -128,7 +126,6 @@ ament_export_libraries(
 
 ament_export_dependencies(
   geometry_msgs
-  grasping_msgs
   pcl_conversions
   pcl_ros
   rclcpp
