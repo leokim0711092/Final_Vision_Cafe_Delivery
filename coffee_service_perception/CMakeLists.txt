@@ -107,7 +107,6 @@ install(
 )
 
 install(DIRECTORY
-  launch
   models
   DESTINATION share/${PROJECT_NAME}
 )
