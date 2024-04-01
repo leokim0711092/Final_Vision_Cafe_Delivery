@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
     // Define the pose of the box (relative to the frame_id)
     geometry_msgs::msg::Pose box_pose;
     box_pose.orientation.w = 1.0; // We can leave out the x, y, and z components of the quaternion since they are initialized to 0
-    box_pose.position.x = 0.083;
+    box_pose.position.x = 0.088;
     box_pose.position.y = 0.414;
     box_pose.position.z = 0.05;
 
@@ -189,7 +189,7 @@ int main(int argc, char **argv) {
   target_pose1.orientation.z = 0.0;
   target_pose1.orientation.w = 0.0;
 
-  target_pose1.position.x = 0.083;
+  target_pose1.position.x = 0.088;
   target_pose1.position.y = 0.414;
   target_pose1.position.z = 0.35;
   

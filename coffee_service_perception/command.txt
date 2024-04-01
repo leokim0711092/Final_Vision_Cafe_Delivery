@@ -16,9 +16,5 @@ ros2 action send_goal /pick_and_place custom_interfaces/action/PickAndPlace "{cu
                                                                                                              hole_radius: [0.03278648108243942, 0.03477940708398819, 0.03488941863179207, 0.03489026427268982], 
                                                                                                              plate_center: {x: -0.3669988811016083, y: 0.038130566477775574, z: -0.5484026074409485}}"
 
-ros2 action send_goal /pick_and_place custom_interfaces/action/PickAndPlace "{cup_number: 4, hole_position: [{x: -0.452854, y: 0.115671, z: -0.5404457449913025}, 
-                                                                                                             {x: -0.452997, y: -0.0142504, z: -0.5404457449913025},
-                                                                                                             {x: -0.344262, y:  0.114102, z: -0.5404457449913025},
-                                                                                                             {x: -0.342936, y: -0.0144072, z: -0.5404457449913025}],
-                                                                                                             plate_center: {x: -0.38585636019706726, y: 0.045445241034030914, z: -0.5484026074409485}}"
+ros2 action send_goal /pick_and_place custom_interfaces/action/PickAndPlace "{cup_number: 1}"
 

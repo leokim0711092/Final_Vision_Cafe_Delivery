@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
     // Define the size of the box in meters
     primitive_1.type = primitive_1.BOX;
     primitive_1.dimensions.resize(3);
-    primitive_1.dimensions[primitive_1.BOX_X] = 0.85;
+    primitive_1.dimensions[primitive_1.BOX_X] = 0.79;
     primitive_1.dimensions[primitive_1.BOX_Y] = 1.81;
     primitive_1.dimensions[primitive_1.BOX_Z] = 0.05;
 
@@ -265,21 +265,76 @@ auto const collision_object_plate = [frame_id =
     return collision_object;
   }();
 
+// Wall
+  auto const collision_object_jaw_1 = [frame_id =
+                                           move_group_arm.getPlanningFrame()] {
+    moveit_msgs::msg::CollisionObject collision_object_1;
+    collision_object_1.header.frame_id = frame_id;
+    collision_object_1.id = "jaw_1";
+    shape_msgs::msg::SolidPrimitive primitive_1;
+
+    // Define the size of the box in meters
+    primitive_1.type = primitive_1.BOX;
+    primitive_1.dimensions.resize(3);
+    primitive_1.dimensions[primitive_1.BOX_X] = 0.13;
+    primitive_1.dimensions[primitive_1.BOX_Y] = 0.01;
+    primitive_1.dimensions[primitive_1.BOX_Z] = 0.03;
+
+    // Define the pose of the box (relative to the frame_id)
+    geometry_msgs::msg::Pose box_pose_1;
+    box_pose_1.orientation.w = 1.0;
+    box_pose_1.position.x = -0.065;
+    box_pose_1.position.y = 0.18;
+    box_pose_1.position.z = 0.015; // add more than
+
+    collision_object_1.primitives.push_back(primitive_1);
+    collision_object_1.primitive_poses.push_back(box_pose_1);
+    collision_object_1.operation = collision_object_1.ADD;
+
+    return collision_object_1;
+  }();
+
+  // Wall
+  auto const collision_object_jaw_2 = [frame_id =
+                                           move_group_arm.getPlanningFrame()] {
+    moveit_msgs::msg::CollisionObject collision_object_1;
+    collision_object_1.header.frame_id = frame_id;
+    collision_object_1.id = "jaw_2";
+    shape_msgs::msg::SolidPrimitive primitive_1;
+
+    // Define the size of the box in meters
+    primitive_1.type = primitive_1.BOX;
+    primitive_1.dimensions.resize(3);
+    primitive_1.dimensions[primitive_1.BOX_X] = 0.13;
+    primitive_1.dimensions[primitive_1.BOX_Y] = 0.01;
+    primitive_1.dimensions[primitive_1.BOX_Z] = 0.03;
+
+    // Define the pose of the box (relative to the frame_id)
+    geometry_msgs::msg::Pose box_pose_1;
+    box_pose_1.orientation.w = 1.0;
+    box_pose_1.position.x = -0.065;
+    box_pose_1.position.y = 0.50;
+    box_pose_1.position.z = 0.015; // add more than
+
+    collision_object_1.primitives.push_back(primitive_1);
+    collision_object_1.primitive_poses.push_back(box_pose_1);
+    collision_object_1.operation = collision_object_1.ADD;
+
+    return collision_object_1;
+  }();
   // Add the collision object to the scene
   moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
-  moveit::planning_interface::PlanningSceneInterface planning_scene_interface_1;
-  moveit::planning_interface::PlanningSceneInterface planning_scene_interface_2;
-  moveit::planning_interface::PlanningSceneInterface planning_scene_interface_3;
-  moveit::planning_interface::PlanningSceneInterface planning_scene_interface_4;
-//   moveit::planning_interface::PlanningSceneInterface planning_scene_interface_5;
 
 //   moveit::planning_interface::PlanningSceneInterface coffee;
 
   planning_scene_interface.applyCollisionObject(collision_object_table);
-  planning_scene_interface_1.applyCollisionObject(collision_object_wall);
-  planning_scene_interface_2.applyCollisionObject(collision_object_coffee_machine_base);
-  planning_scene_interface_3.applyCollisionObject(collision_object_coffee_machine_head);
-  planning_scene_interface_4.applyCollisionObject(collision_object_coffee_machine_nozzle);
+  planning_scene_interface.applyCollisionObject(collision_object_wall);
+  planning_scene_interface.applyCollisionObject(collision_object_coffee_machine_base);
+  planning_scene_interface.applyCollisionObject(collision_object_coffee_machine_head);
+  planning_scene_interface.applyCollisionObject(collision_object_coffee_machine_nozzle);
+  planning_scene_interface.applyCollisionObject(collision_object_jaw_1);
+  planning_scene_interface.applyCollisionObject(collision_object_jaw_2);
+
 //   planning_scene_interface_5.applyCollisionObject(collision_object_plate);
 
 //   coffee.applyCollisionObject(collision_object_cube);

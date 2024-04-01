@@ -87,16 +87,20 @@ body {
 }
 
 .about-image {
-  max-width: 50%;
-  margin-right: 1%;
+  display: flex; /* Ensures the container is a flexbox */
+  justify-content: center; /* Centers the image in the container */
+  align-items: center; /* Aligns the image vertically */
+  overflow: hidden; /* Prevents the image from overflowing its container */
+  max-width: 1500px; /* Maximum width of the container */
+  max-height: 800px; /* Maximum height of the container */
+  border-radius: 5px; /* Applies border-radius to the container */
 }
 
 .about-image img {
-  max-width: 150%;
-  height: auto;
-  border-radius: 5px;
+  max-width: 100%; /* Allows the image to scale down with its container */
+  max-height: 100%; /* Allows the image to scale down with its container */
+  object-fit: cover; /* Ensures the image covers the container, may be cropped */
 }
-
 .dark-theme {
   background-color: #070e16;
 }

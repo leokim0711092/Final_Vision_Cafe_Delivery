@@ -32,7 +32,7 @@
     <a href="#order-coffee" class="btn">Order coffee</a>
   </div>
   <div class="about-image">
-    <img src="robot_arm.png" alt="About Image">
+    <img src="Coffee delivery final _simualtion.gif" alt="About Image">
   </div>
 </section>
 
@@ -101,35 +101,6 @@
                     <p>{{ result }}</p>
             </div>
         </div>
-        <!-- <div class="col-md-12 text-center">
-                <h3 class="status-label">Connection status</h3>
-                <p class="text-danger" v-if="!connected">Not connected!</p>
-                <p class="text-success" v-if="connected">Connected!</p>
-                <div class="connect-btn">
-                    <input type="text" v-model="rosbridge_address" class="form-control" placeholder="Enter ROSBridge address" />
-                    <button :disabled="loading" class="btn btn-danger mt-2" @click="disconnect" v-if="connected">Disconnect</button>
-                    <button :disabled="loading" class="btn btn-success mt-2" @click="connect" v-else>Connect</button>
-                </div>
-            </div>
-            <div class="col-md-12 action-section">
-                <div class="text-center">
-                    <h5>Action Goal</h5>
-                    <div class="my-4">
-                        <label>Coffee amount (Max: 4)</label>
-                        <input type="number" v-model.number="service_request" class="form-control" />
-                        <button @click="send_goal" :disabled="loading || !connected || service_busy" class="btn btn-primary mt-2">Send Goal</button>
-                    </div>
-                    <div class="feedback">
-                        <label>Feedback</label>
-                        <p>{{ feedback }}</p>
-                    </div>
-                    <div class="result">
-                        <label>Result</label>
-                        <p>{{ result }}</p>
-                    </div>
-                </div>
-            </div>
-        </div> -->
     </div>
 </section>
 

@@ -27,6 +27,7 @@ find_package(action_msgs REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "action/FindHolePosition.action"
   "action/PickAndPlace.action"
+  "srv/ActivateAction.srv"
   DEPENDENCIES geometry_msgs #Remember to add it when you use other dependency in the file 
 )
 

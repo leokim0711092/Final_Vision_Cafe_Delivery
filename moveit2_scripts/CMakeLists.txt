@@ -19,6 +19,7 @@ find_package(geometric_shapes REQUIRED)
 find_package(control_msgs REQUIRED)
 find_package(moveit_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(custom_interfaces REQUIRED)
 
 
@@ -26,6 +27,7 @@ set(common_depends
 	rclcpp
 	rclcpp_action
 	rclcpp_components
+	std_msgs
 	moveit_core
 	moveit_ros_planning_interface
 	interactive_markers
@@ -57,9 +59,21 @@ add_library(pick_and_place_real_action SHARED
 ament_target_dependencies(pick_and_place_real_action ${common_depends})
 
 rclcpp_components_register_node(pick_and_place_real_action
-  PLUGIN "Pick_And_Place::MoevitAction"
+  PLUGIN "Pick_And_Place::MoveitAction"
   EXECUTABLE pick_and_place_real_action_node
 )
+
+### Build coffee_service_perception library
+add_library(pick_service SHARED
+	src_real/pick_service.cpp
+) 
+ament_target_dependencies(pick_service ${common_depends})
+
+rclcpp_components_register_node(pick_service
+  PLUGIN "Pick_And_Place::MoveitService"
+  EXECUTABLE pick_service_node
+)
+
 
 
 add_executable(pick_and_place
@@ -138,7 +152,7 @@ install(TARGETS
 install(
   TARGETS
   pick_and_place_real_action
-
+  pick_service
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PACKAGE_NAME}

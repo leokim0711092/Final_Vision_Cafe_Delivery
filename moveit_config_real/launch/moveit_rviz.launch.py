@@ -27,7 +27,6 @@ def generate_launch_description():
         output="log",
         arguments=["-d", rviz_config_file],
         parameters=[
-            # moveit_config.robot_description,
             moveit_config.robot_description_semantic,
             moveit_config.robot_description_kinematics,
             moveit_config.planning_pipelines,

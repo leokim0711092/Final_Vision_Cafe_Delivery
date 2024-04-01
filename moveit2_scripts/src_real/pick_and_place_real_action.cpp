@@ -24,7 +24,7 @@ using namespace std::chrono_literals;
 
 using std::placeholders::_1;
 using std::placeholders::_2;
-class MoevitAction : public rclcpp::Node 
+class MoveitAction : public rclcpp::Node 
 {
   using PickAndPlaceAction =
       custom_interfaces::action::PickAndPlace;
@@ -36,12 +36,12 @@ class MoevitAction : public rclcpp::Node
       rclcpp_action::ClientGoalHandle<FindHolesAction>;
 
 public:
-  explicit MoevitAction(const rclcpp::NodeOptions &options)
+  explicit MoveitAction(const rclcpp::NodeOptions &options)
       : rclcpp::Node("pick_and_place_action", options), goal_done_(false){   
 
     // Using a very short timer to delay initialization
     this->timer_ = this->create_wall_timer(std::chrono::milliseconds(500),
-                            std::bind(&MoevitAction::timer_callback, this));
+                            std::bind(&MoveitAction::timer_callback, this));
     receive = false; // blocking the moveit motion 
 
     /****************************************************
@@ -52,8 +52,13 @@ public:
 
     Approach_Retrive = this->declare_parameter<std::vector<double>>("Approach_Retrive", {});
     z_approach = this->declare_parameter<double>("z_approach", 0.0);
+    deviation = this->declare_parameter<double>("deviation", 0.0);
+
     object_dimensions = this->declare_parameter<std::vector<double>>("object_dimensions", {});
     object_pose = this->declare_parameter<std::vector<double>>("object_pose", {});
+
+    RCLCPP_INFO(this->get_logger(), "Z approach is %f", z_approach);
+    RCLCPP_INFO(this->get_logger(), "Deviation is %f", deviation);
 
     Approach = Approach_Retrive[0];
     Retrieve = Approach_Retrive[1];
@@ -66,9 +71,9 @@ public:
         this->get_node_base_interface(), this->get_node_clock_interface(),
         this->get_node_logging_interface(),
         this->get_node_waitables_interface(), "pick_and_place",
-        std::bind(&MoevitAction::handle_goal, this, _1, _2),
-        std::bind(&MoevitAction::handle_cancel, this, _1),
-        std::bind(&MoevitAction::handle_accepted, this, _1));
+        std::bind(&MoveitAction::handle_goal, this, _1, _2),
+        std::bind(&MoveitAction::handle_cancel, this, _1),
+        std::bind(&MoveitAction::handle_accepted, this, _1));
     
     client_ptr_ = rclcpp_action::create_client<FindHolesAction>(
         this->get_node_base_interface(), this->get_node_graph_interface(),
@@ -102,11 +107,11 @@ public:
 
     auto send_goal_options = rclcpp_action::Client<FindHolesAction>::SendGoalOptions();
     send_goal_options.goal_response_callback =
-        std::bind(&MoevitAction::goal_response_callback, this, _1);
+        std::bind(&MoveitAction::goal_response_callback, this, _1);
     send_goal_options.feedback_callback =
-        std::bind(&MoevitAction::feedback_callback, this, _1, _2);
+        std::bind(&MoveitAction::feedback_callback, this, _1, _2);
     send_goal_options.result_callback =
-        std::bind(&MoevitAction::result_callback, this, _1);
+        std::bind(&MoveitAction::result_callback, this, _1);
     auto goal_handle_future =
         this->client_ptr_->async_send_goal(goal_msg, send_goal_options);
   }
@@ -135,6 +140,8 @@ private:
     geometry_msgs::msg::Point cup_pose;
     std::vector<double> object_dimensions;
     double z_approach;
+    double deviation;
+
     double Approach;
     double Retrieve;
 
@@ -151,7 +158,7 @@ private:
     void handle_accepted(const std::shared_ptr<PickAndPlaceActionGoal> goal_handle) {
 
         // Break off a thread
-        std::thread{std::bind(&MoevitAction::execute, this, _1), goal_handle}.detach();
+        std::thread{std::bind(&MoveitAction::execute, this, _1), goal_handle}.detach();
     }
 
     void initialize() {
@@ -168,7 +175,7 @@ private:
     void execute(const std::shared_ptr<PickAndPlaceActionGoal> goal_handle) {
         
         auto result = std::make_shared<PickAndPlaceAction::Result>();
-        // auto feedback = std::make_shared<PickAndPlaceAction::Feedback>();
+        auto feedback = std::make_shared<PickAndPlaceAction::Feedback>();
 
         const auto goal = goal_handle->get_goal();
 
@@ -182,14 +189,12 @@ private:
         send_goal();
         while (!receive) {
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            feedback->state = "Perception: finding places to put coffee";
+            goal_handle->publish_feedback(feedback);
         }
         int cup_number = goal->cup_number;
-        // std::vector<geometry_msgs::msg::Point> hole_position = goal->hole_position;
-        // geometry_msgs::msg::Point plate_center = goal->plate_center;
-        
 
         for(int i =0; i< cup_number;i++){      
-            // arm_execute(goal_handle, i, hole_position[i], plate_center);
             arm_execute(goal_handle, i, hole_position[i], plate_center);
 
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -204,6 +209,9 @@ private:
     }
     void arm_execute(std::shared_ptr<PickAndPlaceActionGoal> goal_handle, int i, geometry_msgs::msg::Point hole_position, geometry_msgs::msg::Point plate_center ){
         auto feedback = std::make_shared<PickAndPlaceAction::Feedback>();
+
+        feedback->state = "Grasping number " + std::to_string(i+1)+ " cup";
+        goal_handle->publish_feedback(feedback);
 
         const moveit::core::JointModelGroup *joint_model_group_arm =
             move_group_arm->getCurrentState()->getJointModelGroup("ur_manipulator");
@@ -238,11 +246,13 @@ private:
         *           Parameter from perception action         *
         ***************************************************/
         if (i == 0) {
-            init_pose_x = hole_position.x-0.01;
+            // init_pose_x = hole_position.x-0.01;
+            init_pose_x = hole_position.x - deviation;
             init_pose_y = hole_position.y;
             init_pose_z = hole_position.z;
         }
-        double hole_pose_x = hole_position.x-0.01;
+        // double hole_pose_x = hole_position.x-0.01;
+        double hole_pose_x = hole_position.x + deviation;
         double hole_pose_y = hole_position.y;
         double hole_pose_z = hole_position.z;
 
@@ -308,8 +318,8 @@ private:
         target_pose1.orientation.z = 0.0;
         target_pose1.orientation.w = 0.0;
 
-        target_pose1.position.x = 0.083;
-        target_pose1.position.y = 0.414;
+        target_pose1.position.x = cup_pose.x;
+        target_pose1.position.y = cup_pose.y;
         target_pose1.position.z = 0.35;
         
         current_state_arm = move_group_arm->getCurrentState(10);
@@ -559,10 +569,10 @@ private:
         goal_handle->publish_feedback(feedback);
 
         std::vector<geometry_msgs::msg::Pose> z_retrieve_waypoints;
-        target_pose2.position.z += z_approach/2.2;
+        target_pose2.position.z += z_approach/2.0;
         z_retrieve_waypoints.push_back(target_pose2);
 
-        target_pose2.position.z += z_approach/2.2;
+        target_pose2.position.z += z_approach/2.0;
         z_retrieve_waypoints.push_back(target_pose2);
 
         moveit_msgs::msg::RobotTrajectory trajectory_z_retrieve;
@@ -649,5 +659,5 @@ private:
 };
 
 #include "rclcpp_components/register_node_macro.hpp"
-RCLCPP_COMPONENTS_REGISTER_NODE(Pick_And_Place::MoevitAction)
+RCLCPP_COMPONENTS_REGISTER_NODE(Pick_And_Place::MoveitAction)
 

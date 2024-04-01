@@ -7,11 +7,14 @@
     # Collision object for picking
     # CYLINDER object specifications
     object_dimensions: [0.08, 0.035] # [height, radius]
-    object_pose: [0.083, 0.414, 0.05, 0.0, 0.0, 0.0]
+    object_pose: [0.088, 0.414, 0.05, 0.0, 0.0, 0.0]
 
     # Hole
     intial_pose: [-0.40853, 0.0901578, -0.521245]
     perception_pose: [-0.40853, 0.0901578, -0.521245]
+
+    #Deviation
+    deviation: 0.01  #Gazebo is 0.01, real lab is 0.0
 
     # Arm z pose
     z_approach: 0.62

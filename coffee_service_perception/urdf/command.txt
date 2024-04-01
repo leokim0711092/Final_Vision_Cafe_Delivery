@@ -16,7 +16,7 @@ ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_
 
 ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_1 -x 14.16 -y -18.195 -z 1.025 -R 1.57 -P 0 -Y 0
 
-ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_1 -x 13.426772 -y -18.535324 -z 0.52 -R 1.57 -P 0 -Y 0
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_1 -x 13.405485 -y -18.416342 -z 0.52 -R 1.57 -P 0 -Y 0
 ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_2 -x 13.427112 -y -18.405506 -z 0.52 -R 1.57 -P 0 -Y 0
 ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_3 -x 13.531674 -y -18.559851 -z 0.52 -R 1.57 -P 0 -Y 0
 ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_4 -x 13.535534 -y -18.541511 -z 0.52 -R 1.57 -P 0 -Y 0
@@ -30,6 +30,7 @@ ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_
 ===========================================
 Real lab
 
-ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_1 -x 13.943 -y -18.106 -z 1.025 -R 1.57 -P 0 -Y 0
-ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_2 -x 13.943 -y -18.106 -z 1.025 -R 1.57 -P 0 -Y 0
-ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_3 -x 13.943 -y -18.106 -z 1.025 -R 1.57 -P 0 -Y 0
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_1 -x 13.948 -y -18.106 -z 1.025 -R 1.57 -P 0 -Y 0
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_2 -x 13.948 -y -18.106 -z 1.025 -R 1.57 -P 0 -Y 0
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_3 -x 13.948 -y -18.106 -z 1.025 -R 1.57 -P 0 -Y 0
+ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_3 -x 13.948 -y -18.106 -z 1.025 -R 1.57 -P 0 -Y 0
