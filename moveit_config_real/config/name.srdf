@@ -35,7 +35,7 @@
         <joint name="shoulder_pan_joint" value="1.06"/>
         <joint name="wrist_1_joint" value="-1.202"/>
         <joint name="wrist_2_joint" value="-1.57"/>
-        <joint name="wrist_3_joint" value="1.056"/>
+        <joint name="wrist_3_joint" value="-0.514"/>
     </group_state>
     <group_state name="open" group="gripper">
         <joint name="rg2_gripper_finger_left_joint" value="0.40"/>

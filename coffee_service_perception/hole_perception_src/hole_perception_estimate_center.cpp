@@ -80,7 +80,7 @@ void EstimateCenter::estimateCircleParams(std::vector<pcl::PointCloud<pcl::Point
         for (size_t i = 0; i < cloud_vector.size(); ++i) {
             // Lighten the blue color based on its index
             double brightness_factor = static_cast<double>(i) / cloud_vector.size();
-            std::vector<uint8_t> blue_color = {0, 0, static_cast<uint8_t>( 255 - brightness_factor * 230 )};
+            std::vector<uint8_t> blue_color = {0, 0, static_cast<uint8_t>( 25 + brightness_factor * 230 )};
             cluster_colors.push_back(blue_color);    
         }
 

@@ -1,0 +1,30 @@
+version: '3'
+
+networks:
+  ros:
+    driver: bridge
+
+services:
+
+  All:
+    hostname: ros2_all
+    image: leokim10073/final_project:final_coffee_delivery
+    networks:
+      - ros
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    environment:
+      - DISPLAY=${DISPLAY}
+
+  Service:
+    hostname: ros2_service
+    image: leokim10073/final_project:final_coffee_delivery
+    depends_on:
+      - All
+    networks:
+      - ros
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    environment:
+      - DISPLAY=${DISPLAY}
+

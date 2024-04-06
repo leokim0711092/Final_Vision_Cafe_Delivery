@@ -1,0 +1,32 @@
+# Use an official ROS 2 Humble base image
+FROM ros:humble-ros-core
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install PCL, MoveIt 2, and any other dependencies
+RUN apt-get update && apt-get install -y \
+    libpcl-dev \
+    ros-${ROS_DISTRO}-moveit \
+    ros-${ROS_DISTRO}-pcl-conversions \
+    ros-${ROS_DISTRO}-pcl-ros \
+    && rm -rf /var/lib/apt/lists/*
+ 
+# Make a catkin workspace
+WORKDIR /
+RUN mkdir -p /ros2_ws/src
+WORKDIR /ros2_ws/src
+
+RUN git clone https://github.com/leokim0711092/Final_Vision_Cafe_Delivery.git
+
+WORKDIR /ros2_ws
+
+# Build your ROS packages
+RUN /bin/bash -c "source /opt/ros/galactic/setup.bash; cd /ros2_ws; colcon build"
+
+# Source the workspace every time a new shell is opened in the container
+RUN echo source /ros2_ws/install/setup.bash >> ~/.bashrc
+
+# Set the entry point to start a bash shell
+CMD /bin/bash -c "source /ros2_ws/install/setup.bash;"
+
+
