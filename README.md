@@ -2,7 +2,6 @@
 
 RoboCafé aims to revolutionize the café experience by introducing an automated, vision-based delivery system. The project employs cutting-edge technology to automate the delivery of beverages, utilizing a robotic arm to ensure precision and efficiency. The core idea is to streamline café operations and offer a novel, tech-driven service to customers.
 
-
 ## Workflow Overview:
 
 1. Web Request Initiation: 
@@ -17,39 +16,92 @@ A mathematical model, specifically the least square approximation, is used to sl
 4. Trajectory Planning and Execution: 
 Utilizing MoveIt2, the system plans the trajectory for the UR3e robotic arm. This ensures the arm moves smoothly and accurately to place the coffee in the determined location, completing the delivery process.
 
+## Requirements
 
-## Run Locally
+- ROS2 (Robot Operating System 2)
 
-Clone the project
+- C++ Compiler
 
-```bash
-  git clone https://link-to-project
-```
+- Gazebo Simulation / Appropriate Robot Hardware
+  
+- PCL Library
 
-Go to the project directory
+- Moveit2
 
-```bash
-  cd my-project
-```
+## Installation
 
-Install dependencies
+1\. Clone the repository:
 
-```bash
-  npm install
-```
+   ```
+   git clone https://github.com/leokim0711092/Final_Vision_Cafe_Delivery.git
+   ```
 
-Start the server
+2\. Build the project:
+   ```
+   cd ~/ros2_ws
+   colcon build && source install/setup.bash
+   ```
 
-```bash
-  npm run start
-```
+## Usage for Simulation
+1\. Gazebo launch:
+   ```
+   source ~/ros2_ws/install/setup.bash
+   ros2 launch the_construct_office_gazebo starbots_ur3e.launch.xml
+   ```
+2\. Webserver launch:
+   ```
+   cd ~/ros2_ws/src/webpage && python3 -m http.server 7000
+   ```
+3\. Rosbridge server launch:
+   ```
+   source ~/ros2_ws/install/setup.bash && ros2 launch rosbridge_server rosbridge_websocket_launch.xml
+   ```
+4\. All service launch:
+   ```
+   source ~/ros2_ws/install/setup.bash
+   ros2 launch moveit2_scripts All_Exec_Sim.launch.py  
+   ```
+5\. Service for receive request from webpage:
+   ```
+   source ~/ros2_ws/install/setup.bash
+   ros2 run moveit2_scripts pick_service_node
+   ```
+6. Spawn coffee
+   ```
+   ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_1 -x 13.948 -y -18.106 -z 1.025 -R 1.57 -P 0 -Y 0
+   ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_2 -x 13.948 -y -18.106 -z 1.025 -R 1.57 -P 0 -Y 0
+   ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_3 -x 13.948 -y -18.106 -z 1.025 -R 1.57 -P 0 -Y 0
+   ros2 run gazebo_ros spawn_entity.py -file /home/user/ros2_ws/src/coffee_service_perception/urdf/portable_cup.urdf -entity coffee_4 -x 13.948 -y -18.106 -z 1.025 -R 1.57 -P 0 -Y 0
+   ```
+## Usage for Real lab
 
+1\. Webserver launch:
 
+   ```
+   cd ~/ros2_ws/src/webpage && python3 -m http.server 7000
+   ```
+2\. Rosbridge server launch:
+   ```
+   source ~/ros2_ws/install/setup.bash && ros2 launch rosbridge_server rosbridge_websocket_launch.xml
+   ```
+3\. All service launch:
+   ```
+   source ~/ros2_ws/install/setup.bash
+   ros2 launch moveit2_scripts All_Exec_Real.launch.py 
+   ```
+4\. Service for receive request from webpage:
+   ```
+   source ~/ros2_ws/install/setup.bash
+   ros2 run moveit2_scripts pick_service_node
+   ```
 ## Demo
 
-[Insert gif or link to demo
+[RoboCafe' demo
 ](https://www.youtube.com/watch?v=-7of2jbOiUU)
 
 ## Authors
 
 - [@leokim0711092](https://github.com/leokim0711092)
+
+## License
+This project was created under the supervision of the team at [The Construct](https://theconstructsim.com/)
